@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import logo from '@/assets/logo.svg';
 
 interface HeaderProps {
   table: string | null;
@@ -11,9 +12,14 @@ export function Header({ table, onChangeTable }: HeaderProps) {
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-5">
         <Link
           to="/menu"
-          className="text-sm font-semibold uppercase tracking-[0.28em] text-white"
+          aria-label="Islanegra — ir al menú"
+          className="flex items-center"
         >
-          Islanegra
+          <img
+            src={logo}
+            alt="Islanegra"
+            className="h-3.5 w-auto sm:h-4"
+          />
         </Link>
         {table ? (
           <button
