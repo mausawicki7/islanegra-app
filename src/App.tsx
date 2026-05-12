@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { MenuPage } from '@/pages/MenuPage';
 import { BurgerDetailPage } from '@/pages/BurgerDetailPage';
 import { KitchenPage } from '@/pages/KitchenPage';
+import { BusinessPage } from '@/pages/BusinessPage';
 
 export default function App() {
   return (
@@ -11,6 +12,7 @@ export default function App() {
         <Route path="/menu" element={<MenuPage />} />
         <Route path="/burger/:id" element={<BurgerDetailPage />} />
         <Route path="/cocina" element={<KitchenPage />} />
+        <Route path="/negocio/*" element={<BusinessPage />} />
         <Route path="*" element={<Navigate to="/menu" replace />} />
       </Routes>
     </BrowserRouter>
