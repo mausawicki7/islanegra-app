@@ -103,7 +103,7 @@ export function OrdersTable({ orders }: OrdersTableProps) {
               setPage(0);
             }}
             placeholder="Nº"
-            className="w-20 rounded-lg border border-white/[0.08] bg-ink-900 px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none"
+            className="w-20 rounded-lg border border-white/[0.08] bg-ink-900 px-3 py-2 text-base text-white focus:border-white/30 focus:outline-none sm:text-sm"
           />
         </label>
 
@@ -122,12 +122,12 @@ export function OrdersTable({ orders }: OrdersTableProps) {
                 setPage(0);
               }}
               placeholder="Nº de pedido"
-              className="w-full rounded-lg border border-white/[0.08] bg-ink-900 py-2 pl-9 pr-3 text-sm text-white focus:border-white/30 focus:outline-none"
+              className="w-full rounded-lg border border-white/[0.08] bg-ink-900 py-2 pl-9 pr-3 text-base text-white focus:border-white/30 focus:outline-none sm:text-sm"
             />
           </span>
         </label>
 
-        <div className="ml-auto">
+        <div className="ml-auto self-end">
           <ExportCSVButton orders={filtered} />
         </div>
       </div>

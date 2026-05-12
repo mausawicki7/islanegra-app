@@ -129,13 +129,13 @@ export function KitchenOrderCard({
         <span className="tabular-nums">{formatPrice(order.total)}</span>
       </div>
 
-      <div className="mt-1 flex flex-col gap-2 sm:flex-row">
+      <div className="mt-1 flex items-stretch gap-2">
         {advanceTarget && (
           <button
             type="button"
             disabled={busy}
             onClick={() => onAdvance(order)}
-            className="inline-flex h-12 flex-1 items-center justify-center rounded-full bg-white px-5 text-sm font-semibold uppercase tracking-[0.18em] text-black transition hover:bg-white/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-white/30"
+            className="inline-flex h-12 flex-1 items-center justify-center rounded-full bg-white px-3 text-center text-[13px] font-semibold uppercase tracking-[0.14em] leading-tight text-black transition hover:bg-white/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-white/30 sm:px-5 sm:text-sm sm:tracking-[0.18em]"
           >
             {busy ? 'Guardando…' : advanceLabel}
           </button>
@@ -145,7 +145,7 @@ export function KitchenOrderCard({
           disabled={busy}
           onClick={() => onCancel(order)}
           aria-label="Cancelar pedido"
-          className="inline-flex h-12 items-center justify-center rounded-full border border-white/15 px-4 text-sm font-semibold uppercase tracking-[0.18em] text-white/70 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+          className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/15 text-sm font-semibold uppercase tracking-[0.18em] text-white/70 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-4"
         >
           <X size={16} className="sm:hidden" />
           <span className="hidden sm:inline">Cancelar</span>

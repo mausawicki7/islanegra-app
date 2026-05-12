@@ -1,6 +1,9 @@
 export function Footer() {
   return (
-    <footer className="mt-10 border-t border-white/[0.06] py-6 text-center text-[11px] uppercase tracking-[0.24em] text-white/35">
+    <footer
+      className="mt-10 border-t border-white/[0.06] py-6 text-center text-[11px] uppercase tracking-[0.24em] text-white/35"
+      style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}
+    >
       <p>
         Desarrollado por Mau ·{' '}
         <a

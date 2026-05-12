@@ -23,26 +23,34 @@ export function PayoutRow({
   busy = false,
 }: PayoutRowProps) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/[0.06] bg-ink-800 px-5 py-4">
-      <div>
-        <p className="text-base font-semibold text-white">{payout.partnerName}</p>
-        <p className="mt-0.5 text-xs text-white/45">
-          {payout.percentage}% sobre ingresos cobrados
-        </p>
-      </div>
+    <div className="rounded-2xl border border-white/[0.06] bg-ink-800 px-4 py-4 sm:px-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-base font-semibold text-white">
+            {payout.partnerName}
+          </p>
+          <p className="mt-0.5 text-xs text-white/45">
+            {payout.percentage}% sobre ingresos cobrados
+          </p>
+        </div>
 
-      <div className="text-right">
-        <p className="text-lg font-semibold text-white tabular-nums">
-          {formatPrice(payout.amount)}
-        </p>
-        <p className="mt-0.5 text-[11px] uppercase tracking-[0.18em] text-white/45">
-          {payout.paid ? `Pagado ${fmtDate(payout.paidAt)}` : immutable ? 'Pendiente de pago' : 'Cálculo en vivo'}
-        </p>
+        <div className="shrink-0 text-right">
+          <p className="text-lg font-semibold text-white tabular-nums">
+            {formatPrice(payout.amount)}
+          </p>
+          <p className="mt-0.5 text-[10px] uppercase tracking-[0.18em] text-white/45">
+            {payout.paid
+              ? `Pagado ${fmtDate(payout.paidAt)}`
+              : immutable
+                ? 'Pendiente'
+                : 'En vivo'}
+          </p>
+        </div>
       </div>
 
       {immutable && (
         <label
-          className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] transition ${
+          className={`mt-3 flex w-full items-center gap-2 rounded-full border px-3 py-2 text-[11px] uppercase tracking-[0.18em] transition sm:w-auto ${
             payout.paid
               ? 'border-emerald-400/40 bg-emerald-400/[0.06] text-emerald-200'
               : 'border-white/[0.08] bg-ink-900 text-white/70'

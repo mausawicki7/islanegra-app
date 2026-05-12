@@ -51,7 +51,10 @@ export function BurgerRankingChart({ data }: BurgerRankingChartProps) {
                 tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.7)' }}
                 tickLine={false}
                 axisLine={false}
-                width={140}
+                width={110}
+                tickFormatter={(v: string) =>
+                  v.length > 14 ? `${v.slice(0, 13)}…` : v
+                }
               />
               <Tooltip
                 cursor={{ fill: 'rgba(255,255,255,0.04)' }}

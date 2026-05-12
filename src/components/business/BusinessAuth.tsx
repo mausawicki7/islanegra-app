@@ -37,6 +37,7 @@ export function BusinessAuth({ loading, error, onSubmit }: BusinessAuthProps) {
             placeholder="mail@islanegra.com.ar"
             required
             className="w-full rounded-xl border border-white/[0.08] bg-ink-800 px-4 py-3 text-base text-white placeholder:text-white/25 focus:border-white/30 focus:outline-none"
+            style={{ fontSize: 'max(16px, 1rem)' }}
           />
           <input
             type="password"
@@ -46,6 +47,7 @@ export function BusinessAuth({ loading, error, onSubmit }: BusinessAuthProps) {
             placeholder="contraseña"
             required
             className="w-full rounded-xl border border-white/[0.08] bg-ink-800 px-4 py-3 text-base text-white placeholder:text-white/25 focus:border-white/30 focus:outline-none"
+            style={{ fontSize: 'max(16px, 1rem)' }}
           />
         </div>
 

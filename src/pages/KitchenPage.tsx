@@ -68,7 +68,7 @@ export function KitchenPage() {
   return (
     <div className="flex min-h-full flex-col bg-ink-950 text-white">
       <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-ink-950/85 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-[120rem] items-center justify-between px-6">
+        <div className="mx-auto flex h-16 max-w-[120rem] items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-4">
             <img src={logo} alt="Islanegra" className="h-4 w-auto" />
             <span className="hidden text-[11px] uppercase tracking-[0.32em] text-white/45 sm:inline">
@@ -91,7 +91,7 @@ export function KitchenPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[120rem] flex-1 px-6 pb-12 pt-6">
+      <main className="mx-auto w-full max-w-[120rem] flex-1 px-4 sm:px-6 pb-12 pt-6">
         {!isSupabaseConfigured && (
           <p className="mb-4 rounded-xl border border-amber-300/30 bg-amber-300/[0.05] px-3 py-2 text-xs text-amber-200">
             Supabase no está configurado. Revisá las VITE_SUPABASE_* en
@@ -126,7 +126,7 @@ export function KitchenPage() {
         )}
       </main>
 
-      <div className="mx-auto w-full max-w-[120rem] px-6">
+      <div className="mx-auto w-full max-w-[120rem] px-4 sm:px-6">
         <Footer />
       </div>
     </div>

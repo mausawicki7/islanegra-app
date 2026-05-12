@@ -10,13 +10,29 @@
     background-color: #050505;
   }
 
+  html {
+    /* Evita ajustes de tamaño de texto al rotar en iOS */
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     font-feature-settings: 'cv11', 'ss01';
     -webkit-tap-highlight-color: transparent;
+    /* Previene scroll horizontal accidental por overflow de hijos */
+    overflow-x: hidden;
   }
 
   :root {
     color-scheme: dark;
+  }
+
+  /* Tap targets mínimos en mobile sin perder densidad visual en desktop */
+  @media (hover: none) and (pointer: coarse) {
+    button,
+    [role='button'],
+    a {
+      touch-action: manipulation;
+    }
   }
 }
 

@@ -49,7 +49,7 @@ export function BusinessLayout({
   return (
     <div className="flex min-h-full flex-col bg-ink-950 text-white">
       <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-ink-950/85 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-4">
             <img src={logo} alt="Islanegra" className="h-4 w-auto" />
             <span className="hidden text-[11px] uppercase tracking-[0.32em] text-white/45 sm:inline">
@@ -74,7 +74,7 @@ export function BusinessLayout({
         </div>
 
         <nav className="border-t border-white/[0.04]">
-          <ul className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 scrollbar-hide">
+          <ul className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-2 scrollbar-hide sm:px-4">
             {NAV_ITEMS.filter(
               (item) => !item.roles || item.roles.includes(profile.role),
             ).map((item) => (
@@ -83,7 +83,7 @@ export function BusinessLayout({
                   to={item.to}
                   end={item.end}
                   className={({ isActive }) =>
-                    `inline-flex h-11 items-center px-4 text-[11px] uppercase tracking-[0.22em] transition ${
+                    `inline-flex h-11 shrink-0 items-center whitespace-nowrap px-3 text-[11px] uppercase tracking-[0.18em] transition sm:px-4 sm:tracking-[0.22em] ${
                       isActive
                         ? 'text-white'
                         : 'text-white/45 hover:text-white/75'
@@ -98,7 +98,7 @@ export function BusinessLayout({
         </nav>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-6 pb-12 pt-6">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 sm:px-6 pb-12 pt-6">
         <div className="mb-6">
           <PeriodSelector
             period={period}
@@ -109,7 +109,7 @@ export function BusinessLayout({
         {children}
       </main>
 
-      <div className="mx-auto w-full max-w-7xl px-6">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
         <Footer />
       </div>
     </div>

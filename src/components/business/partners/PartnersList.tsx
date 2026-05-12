@@ -62,8 +62,8 @@ export function PartnersList({ partners, onRefresh }: PartnersListProps) {
 
   return (
     <section className="space-y-5">
-      <header className="flex items-center justify-between">
-        <div>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-[11px] uppercase tracking-[0.32em] text-white/45">Socios</p>
           <h1 className="mt-2 text-balance font-semibold uppercase tracking-tightest text-white text-3xl leading-[0.95]">
             Sociedad
@@ -75,7 +75,7 @@ export function PartnersList({ partners, onRefresh }: PartnersListProps) {
         <button
           type="button"
           onClick={() => setCreating(true)}
-          className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-black hover:bg-white/90"
+          className="inline-flex shrink-0 items-center gap-2 rounded-full bg-white px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-black hover:bg-white/90"
         >
           <UserPlus size={14} /> Nuevo socio
         </button>
@@ -91,10 +91,10 @@ export function PartnersList({ partners, onRefresh }: PartnersListProps) {
         {partners.map((p) => (
           <li
             key={p.id}
-            className="flex flex-wrap items-center justify-between gap-3 px-5 py-4"
+            className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-5"
           >
-            <div>
-              <p className="text-base font-semibold text-white">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-base font-semibold text-white">
                 {p.name}
                 {!p.active && (
                   <span className="ml-2 text-[10px] uppercase tracking-[0.22em] text-white/40">
@@ -107,7 +107,7 @@ export function PartnersList({ partners, onRefresh }: PartnersListProps) {
                 {p.endDate ? ` · hasta ${p.endDate}` : ''}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
                 onClick={() => setEditing(p)}

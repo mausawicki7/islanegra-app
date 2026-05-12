@@ -109,7 +109,13 @@ export function OrderSheet({
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
       />
 
-      <div className="relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-3xl border border-white/[0.08] bg-ink-900 sm:max-w-md sm:rounded-3xl">
+      <div
+        className="relative flex w-full flex-col overflow-hidden rounded-t-3xl border border-white/[0.08] bg-ink-900 sm:max-w-md sm:rounded-3xl"
+        style={{
+          maxHeight: 'min(92dvh, calc(100dvh - env(safe-area-inset-top, 0px)))',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        }}
+      >
         <button
           type="button"
           aria-label="Cerrar"
@@ -160,7 +166,7 @@ export function OrderSheet({
                 onChange={(e) => setNote(e.target.value)}
                 rows={2}
                 placeholder="Sin cebolla, punto medio…"
-                className="w-full resize-none rounded-xl border border-white/[0.08] bg-ink-800 px-3 py-3 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+                className="w-full resize-none rounded-xl border border-white/[0.08] bg-ink-800 px-3 py-3 text-base text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
               />
             </div>
 
@@ -183,12 +189,12 @@ export function OrderSheet({
               </p>
             )}
 
-            <div className="mt-8 flex items-center justify-between gap-4 border-t border-white/[0.06] pt-5">
-              <div>
+            <div className="mt-8 flex items-center justify-between gap-3 border-t border-white/[0.06] pt-5">
+              <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-[0.24em] text-white/45">
                   Total
                 </p>
-                <p className="text-xl text-white tabular-nums">
+                <p className="truncate text-xl text-white tabular-nums">
                   {formatPrice(total)}
                 </p>
               </div>
@@ -196,7 +202,7 @@ export function OrderSheet({
                 type="button"
                 onClick={submit}
                 disabled={!canSubmit}
-                className="inline-flex h-12 min-w-[10rem] items-center justify-center rounded-full bg-white px-6 text-sm font-semibold uppercase tracking-[0.2em] text-black transition hover:bg-white/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-white/30 disabled:text-black/60"
+                className="inline-flex h-12 shrink-0 items-center justify-center rounded-full bg-white px-5 text-sm font-semibold uppercase tracking-[0.18em] text-black transition hover:bg-white/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-white/30 disabled:text-black/60 sm:px-6 sm:tracking-[0.2em]"
               >
                 {submitting ? 'Enviando…' : 'Confirmar'}
               </button>

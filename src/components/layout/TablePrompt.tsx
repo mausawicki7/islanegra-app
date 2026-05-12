@@ -36,7 +36,10 @@ export function TablePrompt({
         onClick={onClose}
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
       />
-      <div className="relative w-full max-w-sm overflow-hidden rounded-t-3xl border border-white/[0.08] bg-ink-900 p-6 sm:rounded-3xl">
+      <div
+        className="relative w-full max-w-sm overflow-hidden rounded-t-3xl border border-white/[0.08] bg-ink-900 p-6 sm:rounded-3xl"
+        style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}
+      >
         <p className="text-[11px] uppercase tracking-[0.32em] text-white/45">
           Mesa
         </p>

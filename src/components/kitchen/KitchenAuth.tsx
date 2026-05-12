@@ -49,7 +49,7 @@ export function KitchenAuth({ onSubmit }: KitchenAuthProps) {
             if (e.key === 'Enter') submit();
           }}
           placeholder="••••"
-          className="mt-8 w-full rounded-xl border border-white/[0.08] bg-ink-800 px-4 py-4 text-center text-2xl tracking-[0.6em] text-white placeholder:text-white/20 focus:border-white/30 focus:outline-none"
+          className="mt-8 w-full rounded-xl border border-white/[0.08] bg-ink-800 px-4 py-4 text-center text-2xl tracking-[0.6em] text-white placeholder:text-white/20 focus:border-white/30 focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
 
         {error && (

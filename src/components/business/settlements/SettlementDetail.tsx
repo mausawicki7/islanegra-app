@@ -194,13 +194,15 @@ export function SettlementDetail({ settlement, role, onRefresh }: SettlementDeta
                 busy={busyPayoutId === p.id}
               />
               {immutable && (
-                <button
-                  type="button"
-                  onClick={() => printPayout(p)}
-                  className="ml-auto inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-white/50 hover:text-white"
-                >
-                  <Printer size={12} /> Recibo {p.partnerName.split(' ')[0]}
-                </button>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => printPayout(p)}
+                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-white/50 hover:bg-white/[0.04] hover:text-white"
+                  >
+                    <Printer size={12} /> Recibo {p.partnerName.split(' ')[0]}
+                  </button>
+                </div>
               )}
             </div>
           ))

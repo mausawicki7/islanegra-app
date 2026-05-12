@@ -27,23 +27,23 @@ export function SettlementsList({ months }: SettlementsListProps) {
           <li key={m.month}>
             <Link
               to={`/negocio/liquidaciones/${m.month.slice(0, 7)}`}
-              className="flex items-center justify-between gap-5 px-5 py-4 transition hover:bg-white/[0.02]"
+              className="flex items-center justify-between gap-4 px-4 py-4 transition hover:bg-white/[0.02] sm:px-5"
             >
-              <div>
-                <p className="text-base font-semibold text-white">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-base font-semibold text-white">
                   {monthLabel}
                   {current && (
                     <span className="ml-2 text-[10px] uppercase tracking-[0.22em] text-white/45">
-                      mes en curso
+                      en curso
                     </span>
                   )}
                 </p>
-                <p className="mt-1 text-xs text-white/50">
+                <p className="mt-1 truncate text-xs text-white/50">
                   Cobrado: {formatPrice(m.grossRevenue)} · A pagar:{' '}
                   {formatPrice(m.totalPayouts)}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex shrink-0 items-center gap-2 sm:gap-3">
                 <StatusBadge status={m.status} />
                 <ChevronRight size={16} className="text-white/35" />
               </div>
