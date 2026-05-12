@@ -1,5 +1,6 @@
 import { OrdersTable } from '@/components/business/OrdersTable';
 import type { BusinessOrder } from '@/services/businessService';
+import { usePageTitle } from '@/hooks/usePageTitle';
 
 interface BusinessOrdersPageProps {
   orders: BusinessOrder[];
@@ -12,6 +13,7 @@ export function BusinessOrdersPage({
   loading,
   error,
 }: BusinessOrdersPageProps) {
+  usePageTitle('Pedidos · Negocio');
   if (error) {
     return (
       <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/5 px-3 py-2 text-sm text-red-200">

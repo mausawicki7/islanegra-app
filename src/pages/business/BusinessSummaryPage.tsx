@@ -1,6 +1,7 @@
 import { KPICard } from '@/components/business/KPICard';
 import { pctDelta, type KpiSummary } from '@/services/businessService';
 import { formatPrice } from '@/utils/formatPrice';
+import { usePageTitle } from '@/hooks/usePageTitle';
 
 interface BusinessSummaryPageProps {
   kpis: KpiSummary;
@@ -15,6 +16,7 @@ export function BusinessSummaryPage({
   loading,
   error,
 }: BusinessSummaryPageProps) {
+  usePageTitle('Resumen · Negocio');
   if (error) {
     return (
       <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/5 px-3 py-2 text-sm text-red-200">

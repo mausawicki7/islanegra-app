@@ -5,9 +5,11 @@ export function MenuHero() {
         Menú
       </p>
       <h1 className="mt-4 text-balance font-semibold uppercase tracking-tightest text-white text-[clamp(2.25rem,8vw,4.5rem)] leading-[0.95]">
-        Smashed.
+        Premium
         <br />
-        Sin desvíos.
+        Smashed
+        <br />
+        Burgers
       </h1>
       <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-white/55">
         Seis hamburguesas. Carne aplastada en plancha hasta hacer corteza, pan

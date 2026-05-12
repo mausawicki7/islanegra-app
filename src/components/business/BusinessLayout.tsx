@@ -22,10 +22,20 @@ const ROLE_LABEL: Record<UserRole, string> = {
   kitchen: 'Cocina',
 };
 
-const NAV_ITEMS = [
+interface NavItem {
+  to: string;
+  label: string;
+  end?: boolean;
+  roles?: UserRole[];
+}
+
+const NAV_ITEMS: NavItem[] = [
   { to: '/negocio', label: 'Resumen', end: true },
-  { to: '/negocio/pedidos', label: 'Pedidos', end: false },
-  { to: '/negocio/analisis', label: 'Análisis', end: false },
+  { to: '/negocio/pedidos', label: 'Pedidos' },
+  { to: '/negocio/analisis', label: 'Análisis' },
+  { to: '/negocio/liquidaciones', label: 'Liquidaciones' },
+  { to: '/negocio/mis-liquidaciones', label: 'Mis liquidaciones', roles: ['partner'] },
+  { to: '/negocio/socios', label: 'Socios', roles: ['owner'] },
 ];
 
 export function BusinessLayout({
@@ -65,7 +75,9 @@ export function BusinessLayout({
 
         <nav className="border-t border-white/[0.04]">
           <ul className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 scrollbar-hide">
-            {NAV_ITEMS.map((item) => (
+            {NAV_ITEMS.filter(
+              (item) => !item.roles || item.roles.includes(profile.role),
+            ).map((item) => (
               <li key={item.to}>
                 <NavLink
                   to={item.to}

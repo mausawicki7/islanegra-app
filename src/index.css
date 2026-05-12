@@ -33,3 +33,144 @@
     scrollbar-width: none;
   }
 }
+
+/* Print styles for PDF export via window.print() ------------------------- */
+.printable {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 18mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  body > #root > *:not(.printable) {
+    display: none !important;
+  }
+
+  .printable {
+    display: block;
+    background: #ffffff;
+    color: #000000;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  .printable-doc {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .printable .kicker {
+    font-size: 10px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: #555;
+    margin: 0 0 8px;
+  }
+
+  .printable h1 {
+    font-size: 28px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    margin: 0 0 4px;
+  }
+
+  .printable .confirmed {
+    margin: 0 0 28px;
+    font-size: 12px;
+    color: #666;
+  }
+
+  .printable dl {
+    border-top: 1px solid #ddd;
+    border-bottom: 1px solid #ddd;
+    padding: 12px 0;
+    margin: 0 0 24px;
+  }
+
+  .printable dl > div {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .printable dt {
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    color: #555;
+  }
+
+  .printable dd {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .printable h2 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    margin: 0 0 12px;
+  }
+
+  .printable table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 24px;
+    font-size: 13px;
+  }
+
+  .printable th,
+  .printable td {
+    text-align: left;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+  }
+
+  .printable th:last-child,
+  .printable td:last-child,
+  .printable th:nth-last-child(2),
+  .printable td:nth-last-child(2) {
+    text-align: right;
+  }
+
+  .printable tfoot td {
+    font-weight: 700;
+    border-top: 1px solid #999;
+    border-bottom: none;
+    padding-top: 12px;
+  }
+
+  .printable .notes h3 {
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    color: #555;
+    margin: 0 0 6px;
+  }
+
+  .printable .notes p {
+    margin: 0 0 24px;
+    font-size: 13px;
+  }
+
+  .printable footer {
+    border-top: 1px solid #ddd;
+    padding-top: 16px;
+    font-size: 11px;
+    color: #555;
+    line-height: 1.5;
+  }
+
+  .printable footer .generated {
+    margin-top: 12px;
+    font-size: 10px;
+    color: #888;
+  }
+}

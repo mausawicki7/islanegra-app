@@ -93,17 +93,23 @@ src/
                    RevenueChart, BurgerRankingChart, PaymentMethodChart,
                    HoursHeatmap, OperationalMetrics, OrdersTable, OrderRow,
                    ExportCSVButton
+      settlements/ StatusBadge, SettlementsList, SettlementDetail, PayoutRow,
+                   PrintableSettlement, MyEarnings
+      partners/    PartnersList, PartnerEditor
   data/            burgers.ts
   services/        supabaseClient.ts, ordersService.ts, kitchenService.ts,
-                   authService.ts, businessService.ts
+                   authService.ts, businessService.ts,
+                   partnersService.ts, settlementsService.ts
   hooks/           useTable, useActiveOrders, useKitchenAuth,
-                   useAuth, useBusinessMetrics, usePeriod
-  types/           burger.ts, order.ts
+                   useAuth, useBusinessMetrics, usePeriod,
+                   usePartners, useSettlements, usePageTitle
+  types/           burger.ts, order.ts, settlement.ts
   pages/           MenuPage, BurgerDetailPage, KitchenPage, BusinessPage,
                    business/BusinessSummaryPage, BusinessAnalyticsPage,
-                   BusinessOrdersPage
+                   BusinessOrdersPage, SettlementsPage,
+                   SettlementDetailPage, PartnersPage, MyEarningsPage
   utils/           formatPrice, getTableFromUrl, timeAgo, sound,
-                   periodHelpers, csvExport
+                   periodHelpers, csvExport, monthHelpers
   App.tsx
   main.tsx
 
@@ -186,11 +192,55 @@ Extiende `auth.users` con rol y vínculo opcional a `partners` (turno 4).
 
 **Helper:** `current_user_role()` SECURITY DEFINER — evita recursión en policies que necesitan saber el rol del usuario actual.
 
-### Tablas planeadas (Turno 4)
+#### `partners`
+Socios con porcentaje de participación sobre **ingresos cobrados**.
 
-- `partners` — socios con porcentaje
-- `monthly_settlements` — liquidaciones cerradas (snapshot inmutable)
-- `partner_payouts` — qué le toca a cada socio en cada liquidación
+| Campo | Tipo | Notas |
+|---|---|---|
+| id | uuid PK | |
+| name | text | |
+| percentage | numeric(5,2) | 0–100 |
+| active | boolean | |
+| start_date | date | default `current_date` |
+| end_date | date nullable | |
+
+Seed inicial: Mauricio Sawicki (5%), Sebastián Gutierrez (5%).
+
+#### `monthly_settlements`
+Una row por mes. Mientras es `draft` puede recalcularse; al confirmarse, se vuelve inmutable salvo notas internas.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| id | uuid PK | |
+| month | date | primer día del mes, único |
+| gross_revenue | numeric(14,2) | snapshot al confirmar |
+| status | text | `draft` \| `confirmed` \| `paid` |
+| confirmed_at | timestamptz nullable | |
+| notes | text nullable | editable por owner incluso tras confirmar |
+| created_at / updated_at | timestamptz | |
+
+**Trigger `settlement_immutability`:** una vez `confirmed`/`paid`, bloquea cambios en `month`, `gross_revenue`, `confirmed_at` y prohibe revertir a `draft`.
+
+#### `partner_payouts`
+Snapshot por socio dentro de una settlement.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| id | uuid PK | |
+| settlement_id | uuid FK | |
+| partner_id | uuid FK | |
+| partner_name | text | snapshot |
+| percentage | numeric(5,2) | snapshot |
+| amount | numeric(14,2) | snapshot (revenue × pct / 100) |
+| paid | boolean | |
+| paid_at | timestamptz nullable | sellado por trigger |
+
+**Trigger `payout_immutability`:** una vez creado, solo se pueden modificar `paid` y `paid_at`.
+
+**Functions:**
+- `month_gross_revenue(date)` — suma `orders.total` con `status = 'delivered'` en el mes.
+- `confirm_monthly_settlement(date)` — owner-only. Toma snapshot del cobrado del mes, transiciona `draft → confirmed` o crea la row si no existe, e inserta payouts para todos los socios activos. Idempotente.
+- `auto_confirm_past_months()` — owner-only. Itera desde el primer mes con ventas y confirma todos los meses pasados. Idempotente.
 
 ### RLS (Row Level Security)
 
@@ -199,9 +249,12 @@ Extiende `auth.users` con rol y vínculo opcional a `partners` (turno 4).
 - `order_items` — anon: INSERT, SELECT últimas 6h. Autenticados owner/partner/kitchen: SELECT full history.
 - `profiles` — autenticado: SELECT del propio profile. Owner: SELECT/UPDATE de todos. INSERT solo vía service_role (seed).
 - `products` — público: SELECT donde `active = true`.
+- `partners` — owner/partner: SELECT. Solo owner: INSERT/UPDATE/DELETE.
+- `monthly_settlements` — owner/partner: SELECT. Solo owner: INSERT/UPDATE (con trigger de inmutabilidad).
+- `partner_payouts` — owner/partner: SELECT. Solo owner: INSERT/UPDATE (con trigger de inmutabilidad — solo `paid`/`paid_at` mutables).
 - Realtime habilitado para `orders` y `order_items` (REPLICA IDENTITY FULL).
 
-**A revisar en Turno 4:**
+**Pre-prod:**
 - Reemplazar la policy `orders_anon_update` de 24h por una que limite al rol `kitchen` cuando exista auth real para staff de cocina.
 
 ---
@@ -249,13 +302,23 @@ Extiende `auth.users` con rol y vínculo opcional a `partners` (turno 4).
 8. Todas las métricas de ingresos filtran por `status = 'delivered'`. La vista Pedidos muestra todo el histórico (incluye cancelados).
 9. Solo `owner` (Juan) puede escribir (`orders_owner_write` policy). Mauricio/Sebastián son lectura total.
 
-### Flujo liquidaciones (planeado, Turno 4)
+### Flujo liquidaciones
 
-1. `/negocio/liquidaciones` muestra histórico de meses + mes en curso (draft).
-2. Mes en curso se calcula en vivo desde la BD.
-3. Día 1 del mes siguiente (o manual por Juan), el mes anterior pasa a `confirmed` con snapshot inmutable.
-4. Juan marca pagos a socios. Mauricio y Sebastián ven sus liquidaciones y las del otro.
-5. Exportable a PDF para registro contable.
+1. `/negocio/liquidaciones` muestra el histórico mes a mes + mes en curso. Para meses confirmados/paid se lee de `monthly_settlements`; para mes en curso y meses pasados sin confirmar se calcula en vivo desde `orders` + `partners` activos.
+2. `/negocio/liquidaciones/:YYYY-MM` muestra el detalle del mes:
+   - 3 stats: ingresos cobrados, total a pagar, total ya pagado.
+   - Lista de payouts por socio con porcentaje y monto.
+   - Para owner: botón "Confirmar liquidación" (solo si `draft`) que llama a la function SQL `confirm_monthly_settlement(month)`. Toma snapshot atómico y crea payouts.
+   - Para owner una vez confirmada: checkbox por payout para marcar como pagado. El trigger sella `paid_at`.
+   - Botón "Exportar PDF (todo el mes)" + "Recibo de cada socio" → `window.print()` con un layout printable definido en `index.css` (@media print esconde el resto de la UI y muestra una hoja blanca limpia).
+   - Notas internas editables por owner aún después de confirmar (campo `notes`, no afecta inmutabilidad de números).
+3. Inmutabilidad: dos triggers de Postgres bloquean cambios en `gross_revenue`, `month`, `confirmed_at`, `partner_name`, `percentage`, `amount` una vez la settlement es `confirmed`/`paid`.
+4. Partners (Mauricio/Sebastián) tienen una vista propia en `/negocio/mis-liquidaciones` con su acumulado del año, total pagado/por cobrar y histórico de payouts confirmados.
+5. `/negocio/socios` es solo accesible para owner. Permite alta/edición/baja de socios (afecta solo futuras liquidaciones; las confirmadas son frozen).
+
+### Flujo títulos de pestaña
+
+Cada page setea `document.title` vía el hook `usePageTitle(label)`. El hook concatena `· ISLANEGRA` al final. Ejemplos: "Menú · Mesa 12 · ISLANEGRA", "Cocina · ISLANEGRA", "Análisis · Negocio · ISLANEGRA", "Liquidación octubre 2026 · Negocio · ISLANEGRA".
 
 ---
 
@@ -354,6 +417,53 @@ Estas funcionalidades NO están en el plan y no se deben implementar sin discusi
 ## 11. CHANGELOG
 
 > Formato: orden cronológico inverso (más reciente arriba). Cada entrada indica fecha, turno y resumen de cambios.
+
+### 2026-05-11 — Turno 4: Liquidaciones a Socios ✅
+
+**Estado:** completado, build limpio. Falta correr migración + seed para probar end-to-end.
+
+**Implementado:**
+- Tablas `partners`, `monthly_settlements`, `partner_payouts` + RLS owner-write/business-read.
+- Triggers de inmutabilidad: una settlement `confirmed`/`paid` no permite cambios en `month`/`gross_revenue`/`confirmed_at`; los payouts confirmados solo permiten editar `paid`/`paid_at`.
+- Functions SQL:
+  - `month_gross_revenue(date)` — suma orders.total status=delivered del mes.
+  - `confirm_monthly_settlement(date)` — owner-only, atómica e idempotente: snapshot + payouts insert.
+  - `auto_confirm_past_months()` — owner-only, itera y confirma todos los meses pasados aún en draft.
+- Rutas nuevas:
+  - `/negocio/liquidaciones` — lista mes a mes (confirmadas leídas de BD, draft calculadas en vivo).
+  - `/negocio/liquidaciones/:YYYY-MM` — detalle con confirmar / marcar pagado / exportar PDF / notas.
+  - `/negocio/socios` — owner-only, CRUD de socios.
+  - `/negocio/mis-liquidaciones` — partner-only, vista resumida.
+- Export PDF: hidden printable subtree (`PrintableSettlement`) + `@media print` en `index.css` que oculta toda la UI y muestra una hoja blanca; trigger por `window.print()`. Permite "todo el mes" o "recibo individual por socio".
+- Nav del dashboard ahora es role-aware: Socios visible solo a owner, Mis liquidaciones solo a partner.
+- Hook `usePageTitle` en todas las pages para títulos de pestaña significativos.
+
+**Archivos nuevos:**
+- Migración: `supabase/migrations/20260514000000_partners.sql` (incluye seed de Mauricio y Sebastián con 5% c/u y vinculo profile↔partner por email).
+- Tipos: `src/types/settlement.ts`.
+- Services: `src/services/partnersService.ts`, `src/services/settlementsService.ts`.
+- Hooks: `src/hooks/usePartners.ts`, `src/hooks/useSettlements.ts`, `src/hooks/usePageTitle.ts`.
+- Utils: `src/utils/monthHelpers.ts`.
+- Componentes settlements: `StatusBadge`, `SettlementsList`, `SettlementDetail`, `PayoutRow`, `PrintableSettlement`, `MyEarnings`.
+- Componentes partners: `PartnersList`, `PartnerEditor`.
+- Pages: `SettlementsPage`, `SettlementDetailPage`, `PartnersPage`, `MyEarningsPage`.
+- README.md completo con quickstart, env vars, migración, seed y deploy (Vercel/Netlify/self-hosted).
+- favicon.png en `public/` aplicado vía `<link rel="icon">` (mismo para todas las interfaces porque es SPA).
+
+**Decisiones técnicas:**
+- Las settlements de meses confirmados son frozen por triggers de Postgres, no solo por UI. Aun si un admin se conecta vía SQL Editor, los triggers tiran exception.
+- El cobrado del mes se snapshot-ea sólo al confirmar. Mientras el mes es draft, la UI lo recalcula en vivo desde `orders`. Esto significa que editar pedidos viejos antes de confirmar SÍ afecta la liquidación; después de confirmar, NO.
+- PDF export es print-based (no librería externa). Ventajas: cero dependencias adicionales, controla el navegador del usuario, se puede "guardar como PDF" desde el diálogo de impresión. Suficiente para registro contable.
+- Profile→partner se vincula automáticamente por email en el seed para que Mauricio y Sebastián vean sus propios payouts en `/mis-liquidaciones`.
+
+**Build:** ~7s · 856 KB JS / 23 KB CSS.
+
+**Cambios menores incluidos en este turno:**
+- Hero del cliente: "Smashed. Sin desvíos." → "PREMIUM / SMASHED / BURGERS" en 3 líneas.
+- favicon.png aplicado.
+- Títulos de pestaña por página vía `usePageTitle`.
+
+---
 
 ### 2026-05-11 — Turno 3: Interfaz Negocio ✅
 
@@ -489,4 +599,4 @@ Sugerencias técnicas: `mau.sawicki@gmail.com` (link en footer de la app).
 
 ---
 
-*Última actualización: 2026-05-11, cierre del Turno 3.*
+*Última actualización: 2026-05-11, cierre del Turno 4 — proyecto completo.*

@@ -1,13 +1,32 @@
 import { useEffect, useState } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { BusinessAuth } from '@/components/business/BusinessAuth';
 import { BusinessLayout } from '@/components/business/BusinessLayout';
 import { BusinessAnalyticsPage } from './business/BusinessAnalyticsPage';
 import { BusinessOrdersPage } from './business/BusinessOrdersPage';
 import { BusinessSummaryPage } from './business/BusinessSummaryPage';
+import { SettlementsPage } from './business/SettlementsPage';
+import { SettlementDetailPage } from './business/SettlementDetailPage';
+import { PartnersPage } from './business/PartnersPage';
+import { MyEarningsPage } from './business/MyEarningsPage';
 import { useAuth } from '@/hooks/useAuth';
 import { useBusinessMetrics } from '@/hooks/useBusinessMetrics';
 import { usePeriod } from '@/hooks/usePeriod';
+
+/**
+ * Map a partner profile email to their partner name as stored in the
+ * `partners` table. Used to filter payouts in MyEarnings. The migration
+ * also stores partner_id on the profile row, so this is a fallback when
+ * the partner_id link hasn't been populated yet.
+ */
+const PARTNER_NAME_BY_EMAIL: Record<string, string> = {
+  'mauricio@islanegra.com.ar': 'Mauricio Sawicki',
+  'sebastian@islanegra.com.ar': 'Sebastián Gutierrez',
+};
+
+function partnerDisplayName(email: string): string {
+  return PARTNER_NAME_BY_EMAIL[email.toLowerCase()] ?? email;
+}
 
 export function BusinessPage() {
   const { user, profile, role, loading, authError, login, logout } = useAuth();
@@ -92,6 +111,31 @@ export function BusinessPage() {
               loading={metrics.loading}
               error={metrics.error}
             />
+          }
+        />
+        <Route path="liquidaciones" element={<SettlementsPage />} />
+        <Route
+          path="liquidaciones/:month"
+          element={<SettlementDetailPage role={profile.role} />}
+        />
+        <Route
+          path="mis-liquidaciones"
+          element={
+            role === 'partner' ? (
+              <MyEarningsPage partnerName={partnerDisplayName(profile.email)} />
+            ) : (
+              <Navigate to="/negocio/liquidaciones" replace />
+            )
+          }
+        />
+        <Route
+          path="socios"
+          element={
+            role === 'owner' ? (
+              <PartnersPage />
+            ) : (
+              <Navigate to="/negocio" replace />
+            )
           }
         />
       </Routes>

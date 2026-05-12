@@ -1,3 +1,4 @@
+import { usePageTitle } from '@/hooks/usePageTitle';
 import { BurgerRankingChart } from '@/components/business/BurgerRankingChart';
 import { HoursHeatmap } from '@/components/business/HoursHeatmap';
 import { OperationalMetrics } from '@/components/business/OperationalMetrics';
@@ -30,6 +31,7 @@ export function BusinessAnalyticsPage({
   loading,
   error,
 }: BusinessAnalyticsPageProps) {
+  usePageTitle('Análisis · Negocio');
   if (error) {
     return (
       <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/5 px-3 py-2 text-sm text-red-200">

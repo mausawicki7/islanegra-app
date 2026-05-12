@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
+import { usePageTitle } from '@/hooks/usePageTitle';
 import { TablePrompt } from '@/components/layout/TablePrompt';
 import { BurgerGrid } from '@/components/menu/BurgerGrid';
 import { MenuHero } from '@/components/menu/MenuHero';
@@ -12,6 +13,8 @@ export function MenuPage() {
   const { table, setTable } = useTable();
   const [selected, setSelected] = useState<Burger | null>(null);
   const [tablePromptOpen, setTablePromptOpen] = useState(false);
+
+  usePageTitle(table ? `Menú · Mesa ${table}` : 'Menú');
 
   return (
     <>

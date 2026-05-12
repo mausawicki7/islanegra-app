@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
+import { usePageTitle } from '@/hooks/usePageTitle';
 import { TablePrompt } from '@/components/layout/TablePrompt';
 import { BurgerDetail } from '@/components/menu/BurgerDetail';
 import { OrderSheet } from '@/components/order/OrderSheet';
@@ -14,6 +15,8 @@ export function BurgerDetailPage() {
   const { table, setTable } = useTable();
   const [orderTarget, setOrderTarget] = useState<Burger | null>(null);
   const [tablePromptOpen, setTablePromptOpen] = useState(false);
+
+  usePageTitle(burger ? burger.name : 'Menú');
 
   if (!burger) {
     return <Navigate to="/menu" replace />;

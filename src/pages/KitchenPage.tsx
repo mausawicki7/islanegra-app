@@ -4,6 +4,7 @@ import { Footer } from '@/components/layout/Footer';
 import { KitchenAuth } from '@/components/kitchen/KitchenAuth';
 import { KitchenGrid } from '@/components/kitchen/KitchenGrid';
 import logo from '@/assets/logo.svg';
+import { usePageTitle } from '@/hooks/usePageTitle';
 import {
   advanceOrderStatus,
   cancelOrder,
@@ -16,6 +17,8 @@ import { playNewOrderChime } from '@/utils/sound';
 
 export function KitchenPage() {
   const { authorized, attempt, logout } = useKitchenAuth();
+
+  usePageTitle('Cocina');
 
   const handleNewOrder = useCallback(() => {
     playNewOrderChime();
