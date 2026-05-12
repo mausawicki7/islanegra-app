@@ -27,7 +27,7 @@ export function BusinessSummaryPage({
 
   return (
     <section className="space-y-5">
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <KPICard
           label="Ingresos cobrados"
           value={formatPrice(kpis.revenue)}

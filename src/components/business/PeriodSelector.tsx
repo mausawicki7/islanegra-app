@@ -35,7 +35,7 @@ export function PeriodSelector({ period, onChange, onCustom }: PeriodSelectorPro
               }
             }}
             aria-pressed={selected}
-            className={`inline-flex h-9 items-center justify-center rounded-full px-4 text-[11px] uppercase tracking-[0.18em] transition ${
+            className={`inline-flex h-8 items-center justify-center rounded-full px-2.5 text-[11px] uppercase tracking-[0.18em] transition sm:h-9 sm:px-4 ${
               selected
                 ? 'bg-white text-black'
                 : 'border border-white/[0.08] bg-ink-800 text-white/70 hover:border-white/25 hover:text-white'
@@ -45,7 +45,7 @@ export function PeriodSelector({ period, onChange, onCustom }: PeriodSelectorPro
           </button>
         );
       })}
-      <span className="ml-2 text-[11px] uppercase tracking-[0.22em] text-white/35">
+      <span className="ml-2 hidden text-[11px] uppercase tracking-[0.22em] text-white/35 sm:inline">
         {period.label}
       </span>
 
@@ -70,7 +70,7 @@ export function PeriodSelector({ period, onChange, onCustom }: PeriodSelectorPro
               onCustom({ start: customStart, end: customEnd });
               setCustomOpen(false);
             }}
-            className="inline-flex h-9 items-center justify-center rounded-full bg-white px-4 text-[11px] uppercase tracking-[0.18em] text-black hover:bg-white/90"
+            className="inline-flex h-8 items-center justify-center rounded-full bg-white px-2.5 text-[11px] uppercase tracking-[0.18em] text-black hover:bg-white/90 sm:h-9 sm:px-4"
           >
             Aplicar
           </button>

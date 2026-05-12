@@ -29,7 +29,7 @@ export function BurgerRankingChart({ data }: BurgerRankingChartProps) {
           Sin ventas en el período.
         </p>
       ) : (
-        <div className="h-64 w-full">
+        <div className="h-52 w-full sm:h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={data.slice(0, 6)}

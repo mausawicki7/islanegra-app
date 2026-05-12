@@ -17,7 +17,7 @@ export function HoursHeatmap({ cells }: HoursHeatmapProps) {
   const empty = max === 0;
 
   return (
-    <article className="rounded-2xl border border-white/[0.06] bg-ink-800 p-5">
+    <article className="overflow-hidden rounded-2xl border border-white/[0.06] bg-ink-800 p-5">
       <header className="mb-4 flex items-baseline justify-between">
         <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-white">
           Horarios pico

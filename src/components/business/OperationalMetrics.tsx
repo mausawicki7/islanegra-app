@@ -26,7 +26,7 @@ export function OperationalMetrics({ data }: OperationalMetricsProps) {
           <dt className="text-[10px] uppercase tracking-[0.22em] text-white/45">
             Preparación promedio
           </dt>
-          <dd className="mt-2 text-2xl font-semibold tabular-nums text-white">
+          <dd className="mt-1.5 text-xl font-semibold tabular-nums text-white sm:mt-2 sm:text-2xl">
             {fmtMinutes(data.avgPrepMinutes)}
           </dd>
           <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-white/35">
@@ -37,7 +37,7 @@ export function OperationalMetrics({ data }: OperationalMetricsProps) {
           <dt className="text-[10px] uppercase tracking-[0.22em] text-white/45">
             Entrega total
           </dt>
-          <dd className="mt-2 text-2xl font-semibold tabular-nums text-white">
+          <dd className="mt-1.5 text-xl font-semibold tabular-nums text-white sm:mt-2 sm:text-2xl">
             {fmtMinutes(data.avgTotalMinutes)}
           </dd>
           <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-white/35">

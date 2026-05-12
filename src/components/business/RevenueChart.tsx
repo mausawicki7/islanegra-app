@@ -25,7 +25,7 @@ export function RevenueChart({ data }: RevenueChartProps) {
           Solo pedidos cobrados
         </span>
       </header>
-      <div className="h-64 w-full">
+      <div className="h-52 w-full sm:h-64">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />

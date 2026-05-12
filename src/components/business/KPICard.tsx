@@ -20,24 +20,24 @@ export function KPICard({ label, value, subtitle, delta, hint }: KPICardProps) {
   const tone = deltaTone(delta);
   const Icon = tone.icon;
   return (
-    <article className="flex flex-col justify-between gap-4 rounded-2xl border border-white/[0.06] bg-ink-800 p-5">
+    <article className="flex flex-col justify-between gap-2 rounded-2xl border border-white/[0.06] bg-ink-800 p-4 sm:gap-4 sm:p-5">
       <div>
         <p className="text-[10px] uppercase tracking-[0.28em] text-white/45">
           {label}
         </p>
-        <p className="mt-3 text-3xl font-semibold tabular-nums text-white">
+        <p className="mt-2 text-2xl font-semibold tabular-nums text-white sm:mt-3 sm:text-3xl">
           {value}
         </p>
         {subtitle && (
           <p className="mt-1 text-xs text-white/55">{subtitle}</p>
         )}
       </div>
-      <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.18em]">
+      <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.12em] sm:tracking-[0.18em]">
         <span className={`inline-flex items-center gap-1 ${tone.text}`}>
           <Icon size={12} />
           {tone.label}
         </span>
-        <span className="text-white/30">vs período anterior</span>
+        <span className="hidden text-white/30 sm:inline">vs período anterior</span><span className="text-white/30 sm:hidden">vs ant.</span>
       </div>
       {hint && (
         <p className="-mt-2 text-[10px] uppercase tracking-[0.16em] text-white/30">
