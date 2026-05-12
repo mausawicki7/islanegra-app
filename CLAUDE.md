@@ -418,6 +418,45 @@ Estas funcionalidades NO están en el plan y no se deben implementar sin discusi
 
 > Formato: orden cronológico inverso (más reciente arriba). Cada entrada indica fecha, turno y resumen de cambios.
 
+### 2026-05-12 — Pasada responsive en todas las interfaces ✅
+
+**Estado:** completado, build limpio, deployed. Commit `9be6b19`.
+
+**Contexto:** post-deploy en prod (`islanegra.vercel.app`). Auditoría sistemática de los 3 interfaces en mobile / tablet / desktop / kiosk.
+
+**Fixes críticos (real bugs, no cosmética):**
+- **iOS Safari dynamic viewport:** `OrderSheet` usaba `max-h-[92vh]` y la toolbar dinámica de Safari mobile cortaba contenido. Ahora `min(92dvh, calc(100dvh - env(safe-area-inset-top)))`.
+- **Safe areas iPhone:** `OrderSheet`, `TablePrompt` y `Footer` aplican `padding-bottom: env(safe-area-inset-bottom)` para no quedar pegados al home indicator.
+- **iOS auto-zoom en inputs:** todo `<input>`/`<textarea>` de texto editable a `text-base` (16px) en mobile, `sm:text-sm` en desktop. Sin esto, iOS hace zoom al focusear (visualmente roto).
+
+**Fixes de layout:**
+- Gutters globales unificados: `px-4 sm:px-5` (cliente) / `px-4 sm:px-6` (cocina, negocio).
+- `BusinessLayout` tabs: `shrink-0 whitespace-nowrap` + tracking reducido en mobile.
+- `PartnersList`, `PayoutRow`, `SettlementsList`: items con `min-w-0 flex-1 truncate` en el contenido + `shrink-0` en acciones.
+- `PayoutRow` reestructurado a 2 filas en mobile (info + checkbox full-width abajo), inline en sm+. Antes el `flex-wrap` daba layouts caóticos.
+- `KitchenOrderCard` botones siempre side-by-side. Cancel circular 48×48 con X en mobile, "Cancelar" full en sm+. Antes stackeaban verticalmente y obligaban a scroll para llegar al "Cancelar".
+- `BurgerRankingChart`: ancho del eje Y 140 → 110 + truncate visual de nombres >14 chars.
+- `SettlementDetail` "Recibo X" estaba mal alineado: usaba `ml-auto` dentro de un `space-y-2` (no flex). Ahora envuelto en `<div className="flex justify-end">`.
+
+**Mejoras globales (`index.css`):**
+- `-webkit-text-size-adjust: 100%` → rotar el dispositivo ya no escala texto.
+- `body { overflow-x: hidden }` → guardia contra overflow accidental.
+- `touch-action: manipulation` en buttons/links de dispositivos coarse → elimina el delay de 300ms en taps.
+
+**Build:** 6.93s · 858 KB JS / 24 KB CSS · 2398 módulos.
+
+---
+
+### 2026-05-12 — Deploy en Vercel ✅
+
+**Estado:** live en `https://islanegra.vercel.app`.
+
+- Vercel detecta preset Vite automáticamente.
+- Env vars en producción: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_TRANSFER_ALIAS`, `VITE_KITCHEN_PIN`. La secret NO va a Vercel (solo se usa para el seed local).
+- Fix `vercel.json` (commit `238c3fc`) con SPA rewrite: `{ "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }`. Sin esto Vercel devuelve 404 en cualquier deep link a React Router (`/cocina`, `/negocio/*`, `/burger/:id`).
+
+---
+
 ### 2026-05-11 — Turno 4: Liquidaciones a Socios ✅
 
 **Estado:** completado, build limpio. Falta correr migración + seed para probar end-to-end.
@@ -599,4 +638,4 @@ Sugerencias técnicas: `mau.sawicki@gmail.com` (link en footer de la app).
 
 ---
 
-*Última actualización: 2026-05-11, cierre del Turno 4 — proyecto completo.*
+*Última actualización: 2026-05-12, post-deploy + pasada responsive.*
