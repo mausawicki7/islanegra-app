@@ -1,0 +1,156 @@
+import { useEffect, useState } from 'react';
+import { Banknote, Building2, X } from 'lucide-react';
+import type { Order, OrderStatus } from '@/types/order';
+import { formatPrice } from '@/utils/formatPrice';
+import { minutesSince, timeAgo } from '@/utils/timeAgo';
+import { nextStatus } from '@/services/kitchenService';
+
+interface KitchenOrderCardProps {
+  order: Order;
+  busy?: boolean;
+  onAdvance: (order: Order) => void;
+  onCancel: (order: Order) => void;
+}
+
+const STATE_LABELS: Record<OrderStatus, string> = {
+  new: 'Nuevo',
+  preparing: 'En preparación',
+  ready: 'Listo',
+  delivered: 'Entregado',
+  cancelled: 'Cancelado',
+};
+
+const ADVANCE_LABELS: Record<OrderStatus, string> = {
+  new: 'Empezar a preparar',
+  preparing: 'Marcar listo',
+  ready: 'Entregar / Cobrar',
+  delivered: '',
+  cancelled: '',
+};
+
+function stateAccent(status: OrderStatus, ageMinutes: number): string {
+  if (status === 'ready') {
+    return 'border-emerald-400/40 bg-emerald-400/[0.04]';
+  }
+  if (status === 'preparing') {
+    return 'border-amber-300/30 bg-amber-300/[0.03]';
+  }
+  // new
+  if (ageMinutes >= 8) {
+    return 'border-red-400/50 bg-red-400/[0.06]';
+  }
+  if (ageMinutes >= 4) {
+    return 'border-amber-300/40 bg-amber-300/[0.04]';
+  }
+  return 'border-white/15 bg-ink-800';
+}
+
+export function KitchenOrderCard({
+  order,
+  busy = false,
+  onAdvance,
+  onCancel,
+}: KitchenOrderCardProps) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 15000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const ageMinutes = minutesSince(order.createdAt, now);
+  const accent = stateAccent(order.status, ageMinutes);
+  const advanceLabel = ADVANCE_LABELS[order.status];
+  const advanceTarget = nextStatus(order.status);
+
+  return (
+    <article
+      className={`flex flex-col gap-4 rounded-2xl border p-5 transition ${accent}`}
+      aria-label={`Pedido ${order.orderNumber}, mesa ${order.tableNumber}`}
+    >
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.28em] text-white/45">
+            Pedido
+          </p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums text-white">
+            #{order.orderNumber}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] uppercase tracking-[0.28em] text-white/45">
+            Mesa
+          </p>
+          <p className="mt-1 text-3xl font-semibold tabular-nums text-white">
+            {order.tableNumber}
+          </p>
+        </div>
+      </header>
+
+      <div className="flex items-center justify-between text-xs uppercase tracking-[0.22em]">
+        <span className="text-white/80">{STATE_LABELS[order.status]}</span>
+        <span className="text-white/45 tabular-nums">{timeAgo(order.createdAt, now)}</span>
+      </div>
+
+      <ul className="space-y-1.5 border-t border-white/[0.08] pt-4">
+        {order.items.map((it) => (
+          <li
+            key={it.id}
+            className="flex items-baseline justify-between gap-3 text-base text-white"
+          >
+            <span className="flex items-baseline gap-3">
+              <span className="inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full bg-white/10 px-2 text-sm font-semibold tabular-nums text-white">
+                {it.quantity}
+              </span>
+              <span className="text-balance">{it.productName}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {order.note && (
+        <p className="rounded-xl border border-white/[0.08] bg-ink-900 px-3 py-2 text-sm leading-snug text-white/80">
+          <span className="block text-[10px] uppercase tracking-[0.24em] text-white/45">
+            Nota
+          </span>
+          {order.note}
+        </p>
+      )}
+
+      <div className="flex items-center justify-between border-t border-white/[0.08] pt-3 text-xs text-white/55">
+        <span className="inline-flex items-center gap-1.5">
+          {order.paymentMethod === 'cash' ? (
+            <Banknote size={14} />
+          ) : (
+            <Building2 size={14} />
+          )}
+          {order.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}
+        </span>
+        <span className="tabular-nums">{formatPrice(order.total)}</span>
+      </div>
+
+      <div className="mt-1 flex flex-col gap-2 sm:flex-row">
+        {advanceTarget && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onAdvance(order)}
+            className="inline-flex h-12 flex-1 items-center justify-center rounded-full bg-white px-5 text-sm font-semibold uppercase tracking-[0.18em] text-black transition hover:bg-white/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-white/30"
+          >
+            {busy ? 'Guardando…' : advanceLabel}
+          </button>
+        )}
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onCancel(order)}
+          aria-label="Cancelar pedido"
+          className="inline-flex h-12 items-center justify-center rounded-full border border-white/15 px-4 text-sm font-semibold uppercase tracking-[0.18em] text-white/70 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+        >
+          <X size={16} className="sm:hidden" />
+          <span className="hidden sm:inline">Cancelar</span>
+        </button>
+      </div>
+    </article>
+  );
+}

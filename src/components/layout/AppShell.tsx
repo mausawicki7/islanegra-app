@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Footer } from './Footer';
 import { Header } from './Header';
 
 interface AppShellProps {
@@ -9,11 +10,14 @@ interface AppShellProps {
 
 export function AppShell({ children, table, onChangeTable }: AppShellProps) {
   return (
-    <div className="min-h-full bg-ink-950 text-white">
+    <div className="flex min-h-full flex-col bg-ink-950 text-white">
       <Header table={table} onChangeTable={onChangeTable} />
-      <main className="mx-auto max-w-6xl px-5 pb-32 pt-6 sm:pt-10">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-5 pb-16 pt-6 sm:pt-10">
         {children}
       </main>
+      <div className="mx-auto w-full max-w-6xl px-5">
+        <Footer />
+      </div>
     </div>
   );
 }
