@@ -296,6 +296,28 @@ Auditoría de intentos y confirmaciones de pago.
 **Functions:**
 - `cancel_stale_unpaid_orders()` — cancela pedidos `awaiting_payment` sin pago confirmado con más de 10 minutos. La migración intenta programarla con pg_cron y degrada con `NOTICE` si la extensión no está habilitada.
 
+#### `game_scores`
+Scores del mini-juego Flappy Burger y registro de premios ganados. **Una sola tabla unifica scores y premios** — el spec original del Turno 5 describía una tabla separada `cocktail_rewards` que nunca se creó; la implementación consolidó todo acá.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| id | uuid PK | |
+| order_id | uuid FK | |
+| table_number | integer | |
+| score | integer | |
+| played_at | timestamptz | default now() |
+| week_start | date | lunes de la semana, para leaderboard semanal |
+| redemption_code | text nullable unique | 6 chars alfanuméricos sin 0/O/1/I. Solo presente si ganó el premio. |
+| redeemed_at | timestamptz nullable | seteado al canjear desde `/salon` |
+| redeemed_by | text nullable | nombre de la moza que validó |
+| claimed_by | text nullable | moza que "tomó" la tarea de validación (señalización, no lock) |
+| claimed_at | timestamptz nullable | |
+| player_name | text nullable | nombre del jugador ganador (opcional, se pide solo si gana) |
+
+**Trigger:** `game_scores_one_reward_per_table_night` — antes de INSERT, verifica que la mesa no haya ganado ya un premio esa noche (zona `America/Argentina/Buenos_Aires`). Si ya existe, lanza excepción.
+
+> **Nota para turnos futuros:** no existe una tabla `cocktail_rewards`. Si un prompt anterior la menciona, ignorar — todo vive en `game_scores`.
+
 ### RLS (Row Level Security)
 
 **Estado actual:**
@@ -504,9 +526,30 @@ Estas funcionalidades NO están en el plan y no se deben implementar sin discusi
 
 > Formato: orden cronológico inverso (más reciente arriba). Cada entrada indica fecha, turno y resumen de cambios.
 
+### 2026-05-14 — Turno 5 fix: pausa de game loop + limpieza ✅
+
+**Estado:** completado. Build limpio.
+
+**Implementado:**
+- `useGameLoop.ts` — pausa el `requestAnimationFrame` cuando `document.hidden = true`; no auto-reanuda al volver (el jugador toca para continuar). Expone `{ paused, resume }`. Limpia el RAF al desmontar sin huérfanos.
+- `GameCanvas.tsx` — consume `paused`/`resume` del hook; overlay "Tocá para continuar" dibujado en canvas cuando está pausado mid-run; tap/touch reanuda el loop + aplica flap.
+- `public/1.png` y `public/2.png` eliminados (1.25 MB de originales PNG sin usar — el juego usa `burger-normal.webp` y `burger-squish.webp`).
+- Sección `game_scores` agregada al modelo de datos en este archivo con nota explícita: no existe `cocktail_rewards`, todo vive en `game_scores`.
+
+**Archivos modificados:**
+- `src/components/game/useGameLoop.ts`
+- `src/components/game/GameCanvas.tsx`
+- `CLAUDE.md`
+
+**Archivos eliminados:**
+- `public/1.png`
+- `public/2.png`
+
+---
+
 ### 2026-05-14 — Turno 5 delta: cocktails pasan a Salón ✅
 
-**Estado:** completado en código. Build y `tsc --noEmit` no ejecutados por restricción explícita del turno.
+**Estado:** completado en código. Build limpio (926 KB JS / 30 KB CSS).
 
 **Implementado:**
 - Migración `supabase/migrations/20260513000001_engagement_claim.sql` agrega `claimed_by` / `claimed_at` a `game_scores` y reemplaza la policy de redeem por una policy de claim/canje para premios de las últimas 24h.

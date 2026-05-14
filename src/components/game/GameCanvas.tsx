@@ -127,12 +127,6 @@ export function GameCanvas({
     window.requestAnimationFrame(() => render(true));
   }, [render]);
 
-  const flap = useCallback(() => {
-    if (!running) setRunning(true);
-    stateRef.current.vy = -0.38;
-    squishUntilRef.current = performance.now() + 180;
-  }, [running]);
-
   const frame = useCallback(
     (deltaMs: number) => {
       const canvas = canvasRef.current;
@@ -184,7 +178,32 @@ export function GameCanvas({
     [onGameOver, render],
   );
 
-  useGameLoop(running, frame);
+  const { paused, resume } = useGameLoop(running, frame);
+
+  const flap = useCallback(() => {
+    if (paused) {
+      resume();
+    }
+    if (!running) setRunning(true);
+    stateRef.current.vy = -0.38;
+    squishUntilRef.current = performance.now() + 180;
+  }, [running, paused, resume]);
+
+  // Draw pause overlay whenever the game is paused mid-run
+  useEffect(() => {
+    if (!paused || !running) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    render(false);
+    const w = canvas.clientWidth;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, 0, w, HEIGHT);
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.font = '700 20px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Tocá para continuar', w / 2, HEIGHT / 2);
+  }, [paused, running, render]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
