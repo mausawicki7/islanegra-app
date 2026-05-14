@@ -43,15 +43,6 @@ export function MercadoPagoBrick({
       try {
         const preference = await createPaymentPreference({
           orderId: order.id,
-          total: order.totalAmount,
-          tableNumber: order.tableNumber,
-          items: order.items.map((item) => ({
-            id: item.productId,
-            title: item.productName,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            productType: item.productType,
-          })),
         });
         if (!alive) return;
         setPreferenceId(preference.preferenceId);

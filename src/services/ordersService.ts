@@ -2,7 +2,7 @@ import { supabase } from './supabaseClient';
 import type { Order, OrderInput } from '@/types/order';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { OrderStatus } from '@/types/order';
-import type { LegacyPaymentMethod, PaymentStatus } from '@/types/payment';
+import type { LegacyPaymentMethod, PaymentMethod, PaymentStatus } from '@/types/payment';
 import { calculatePaymentTotals } from '@/utils/calculatePaymentTotals';
 
 interface OrderRow {
@@ -127,6 +127,29 @@ export async function createOrder(input: OrderInput): Promise<Order> {
   }
 
   return mapOrder({ ...orderRow, order_items: insertedItems ?? [] } as OrderRow);
+}
+
+interface ServerSideOrderInput {
+  tableNumber: string;
+  paymentMethod: PaymentMethod;
+  note: string | null;
+  items: Array<{
+    productId: string;
+    quantity: number;
+  }>;
+}
+
+export async function createOrderServerSide(input: ServerSideOrderInput): Promise<Order> {
+  const { data, error } = await supabase.functions.invoke<OrderRow>('create-order', {
+    body: input,
+  });
+
+  if (error) throw new Error(error.message);
+  if (!data) {
+    throw new Error('No se pudo crear el pedido');
+  }
+
+  return mapOrder(data);
 }
 
 export async function fetchOrderById(orderId: string): Promise<Order | null> {

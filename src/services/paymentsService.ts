@@ -3,7 +3,6 @@ import { supabase } from './supabaseClient';
 import { fetchOrderById } from './ordersService';
 import type { Order } from '@/types/order';
 import type {
-  PaymentPreferenceItem,
   PaymentPreferenceResponse,
   PaymentStatus,
   PaymentStatusSnapshot,
@@ -19,23 +18,12 @@ interface PaymentStatusRow {
 
 export async function createPaymentPreference(input: {
   orderId: string;
-  items: PaymentPreferenceItem[];
-  total: number;
-  tableNumber?: string;
 }): Promise<PaymentPreferenceResponse> {
   const { data, error } = await supabase.functions.invoke<PaymentPreferenceResponse>(
     'create-payment-preference',
     {
       body: {
         orderId: input.orderId,
-        tableNumber: input.tableNumber,
-        items: input.items.map((item) => ({
-          id: item.id,
-          title: item.title,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-        })),
-        total: input.total,
       },
     },
   );

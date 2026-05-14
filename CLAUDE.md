@@ -139,7 +139,7 @@ supabase/
 ### Tablas existentes
 
 #### `products`
-Catálogo de productos. Por ahora alimentado desde `src/data/burgers.ts` (puede migrarse a Supabase cuando se quiera edición desde el dashboard).
+Catálogo de productos. `products` es la fuente de verdad server-side para precios; `src/data/burgers.ts` queda solo para renderizar el menú en frontend.
 
 | Campo | Tipo | Notas |
 |---|---|---|
@@ -525,6 +525,29 @@ Estas funcionalidades NO están en el plan y no se deben implementar sin discusi
 ## 11. CHANGELOG
 
 > Formato: orden cronológico inverso (más reciente arriba). Cada entrada indica fecha, turno y resumen de cambios.
+
+### 2026-05-14 — Turno 6-fix: precios server-side ✅
+
+**Estado:** completado en código. Build y `tsc --noEmit` no ejecutados por restricción explícita del turno.
+
+**Implementado:**
+- Migración `supabase/migrations/20260514000001_products_seed.sql` seed-ea los 6 productos en `products` y actualiza `price`/`active` con `ON CONFLICT`, dejando Supabase como fuente de verdad de precios.
+- Nueva Edge Function `create-order`: recibe solo mesa, método de pago, nota e `{ productId, quantity }`; lee `products` con service role, calcula subtotal/descuento/total server-side, crea `orders` + snapshots en `order_items`, y devuelve la row completa para mapear en frontend.
+- `OrderSheet` dejó de enviar precio, nombre, tipo y totals desde cliente; ahora usa `createOrderServerSide`.
+- `create-payment-preference` dejó de confiar en items/total del cliente: lee `orders.total_amount` y `order_items.unit_price` reales para crear la preferencia e insertar auditoría.
+- Checkout ahora invoca la preferencia MP solo con `orderId`.
+- `mp-webhook` compara el monto aprobado de MercadoPago contra `orders.total_amount` con tolerancia de 1 ARS antes de marcar el pedido como pagado.
+
+**Archivos nuevos/modificados:**
+- `supabase/migrations/20260514000001_products_seed.sql`
+- `supabase/functions/create-order/index.ts`
+- `supabase/functions/create-payment-preference/index.ts`
+- `supabase/functions/mp-webhook/index.ts`
+- `src/services/ordersService.ts`
+- `src/services/paymentsService.ts`
+- `src/components/order/OrderSheet.tsx`
+- `src/components/order/MercadoPagoBrick.tsx`
+- `CLAUDE.md`
 
 ### 2026-05-14 — Turno 6 delta: cobros en efectivo pasan a Salón ✅
 
@@ -914,4 +937,4 @@ Sugerencias técnicas: `mau.sawicki@gmail.com` (link en footer de la app).
 
 ---
 
-*Última actualización: 2026-05-14, Turno 6 delta cobros en Salón.*
+*Última actualización: 2026-05-14, Turno 6-fix precios server-side.*

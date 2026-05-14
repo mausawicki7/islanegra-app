@@ -8,14 +8,13 @@ const corsHeaders = {
 
 interface PreferenceRequest {
   orderId: string;
-  tableNumber?: string;
-  items: Array<{
-    id: string;
-    title: string;
-    quantity: number;
-    unitPrice: number;
-  }>;
-  total: number;
+}
+
+interface OrderItemRow {
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  unit_price: number | string;
 }
 
 function json(body: unknown, status = 200): Response {
@@ -51,7 +50,7 @@ Deno.serve(async (req) => {
     return json({ error: 'Invalid JSON body' }, 400);
   }
 
-  if (!payload.orderId || !payload.items?.length || payload.total <= 0) {
+  if (!payload.orderId) {
     return json({ error: 'Invalid preference payload' }, 400);
   }
 
@@ -61,7 +60,9 @@ Deno.serve(async (req) => {
 
   const { data: order, error: orderError } = await supabase
     .from('orders')
-    .select('id, order_number, payment_method, payment_status, total_amount')
+    .select(
+      'id, order_number, table_number, payment_method, payment_status, subtotal_amount, total_amount',
+    )
     .eq('id', payload.orderId)
     .maybeSingle();
 
@@ -73,12 +74,30 @@ Deno.serve(async (req) => {
     return json({ error: 'Order not found or not payable with MercadoPago' }, 404);
   }
 
+  const orderTotal = Number(order.total_amount);
+  if (!Number.isFinite(orderTotal) || orderTotal <= 0) {
+    return json({ error: 'Order has invalid total amount' }, 400);
+  }
+
+  const { data: orderItems, error: itemsError } = await supabase
+    .from('order_items')
+    .select('product_id, product_name, quantity, unit_price')
+    .eq('order_id', payload.orderId);
+
+  if (itemsError) {
+    return json({ error: itemsError.message }, 500);
+  }
+
+  if (!orderItems?.length) {
+    return json({ error: 'Order has no items' }, 400);
+  }
+
   const preferenceBody = {
-    items: payload.items.map((item) => ({
-      id: item.id,
-      title: item.title,
+    items: (orderItems as OrderItemRow[]).map((item) => ({
+      id: item.product_id,
+      title: item.product_name,
       quantity: item.quantity,
-      unit_price: item.unitPrice,
+      unit_price: Number(item.unit_price),
       currency_id: 'ARS',
     })),
     external_reference: payload.orderId,
@@ -93,7 +112,7 @@ Deno.serve(async (req) => {
     metadata: {
       order_id: payload.orderId,
       order_number: order.order_number,
-      table_number: payload.tableNumber,
+      table_number: order.table_number,
     },
   };
 
@@ -117,7 +136,7 @@ Deno.serve(async (req) => {
     .from('payments')
     .insert({
       order_id: payload.orderId,
-      amount: payload.total,
+      amount: orderTotal,
       method: 'mercadopago',
       status: 'pending',
       gateway_payload: preference,

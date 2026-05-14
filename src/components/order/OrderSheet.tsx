@@ -6,7 +6,7 @@ import type { PaymentMethod } from '@/types/order';
 import { CASH_DISCOUNT_PERCENT } from '@/config/pricing';
 import { formatPrice } from '@/utils/formatPrice';
 import { calculatePaymentTotals } from '@/utils/calculatePaymentTotals';
-import { createOrder } from '@/services/ordersService';
+import { createOrderServerSide } from '@/services/ordersService';
 import { isSupabaseConfigured } from '@/services/supabaseClient';
 import { QuantitySelector } from './QuantitySelector';
 import { PaymentMethodSelector } from './PaymentMethodSelector';
@@ -80,19 +80,14 @@ export function OrderSheet({
           'Supabase no está configurado. Revisá .env.local (VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY).',
         );
       }
-      const order = await createOrder({
+      const order = await createOrderServerSide({
         tableNumber,
         paymentMethod: payment,
-        paymentStatus: payment === 'cash' ? 'unpaid' : 'pending',
         note: note.trim() ? note.trim() : null,
-        totals: selectedTotals,
         items: [
           {
             productId: burger.id,
-            productName: burger.name,
-            productType: burger.type,
             quantity,
-            unitPrice: burger.price,
           },
         ],
       });

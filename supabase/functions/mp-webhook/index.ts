@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
 
   const { data: order } = await supabase
     .from('orders')
-    .select('id, payment_gateway_id, payment_status')
+    .select('id, payment_gateway_id, payment_status, total_amount')
     .eq('id', orderId)
     .maybeSingle();
 
@@ -176,6 +176,21 @@ Deno.serve(async (req) => {
   if (insertError) {
     console.error('Could not insert payment row', insertError);
     return json({ ok: true });
+  }
+
+  if (mapped.paymentStatus === 'paid' && order.total_amount != null) {
+    const received = Number(mpPayment.transaction_amount ?? 0);
+    const expected = Number(order.total_amount);
+
+    if (Number.isFinite(expected) && Math.abs(received - expected) > 1) {
+      console.error('MP payment amount mismatch', {
+        orderId,
+        paymentId,
+        received,
+        expected,
+      });
+      return json({ ok: true, amountMismatch: true });
+    }
   }
 
   if (
