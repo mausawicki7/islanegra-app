@@ -5,6 +5,7 @@ import { KitchenPage } from '@/pages/KitchenPage';
 import { BusinessPage } from '@/pages/BusinessPage';
 import { CheckoutPage } from '@/pages/CheckoutPage';
 import { OrderTrackingPage } from '@/pages/OrderTrackingPage';
+import { SalonPage } from '@/pages/SalonPage';
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="/checkout/:orderId" element={<CheckoutPage />} />
         <Route path="/pedido/:orderId" element={<OrderTrackingPage />} />
         <Route path="/cocina" element={<KitchenPage />} />
+        <Route path="/salon" element={<SalonPage />} />
         <Route path="/negocio/*" element={<BusinessPage />} />
         <Route path="*" element={<Navigate to="/menu" replace />} />
       </Routes>

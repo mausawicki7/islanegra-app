@@ -61,12 +61,13 @@ ISLANEGRA es una **webapp premium para un establecimiento de smashed burgers** u
 
 ## 3. Arquitectura general
 
-### Tres interfaces
+### Cuatro interfaces
 
 | Interfaz | Ruta | Audiencia | Acceso |
 |---|---|---|---|
 | **Cliente** | `/menu?mesa=N` | Comensales en la mesa | Público, sin login |
 | **Cocina** | `/cocina` | Staff de cocina | PIN (variable de entorno) |
+| **Salón** | `/salon` | Mozas/mozos | Nombre local en `localStorage`, sin auth real |
 | **Negocio** | `/negocio` | Juan, Mauricio, Sebastián | Supabase Auth con roles |
 
 ### Stack técnico
@@ -91,6 +92,9 @@ src/
                    PaymentMethodSelector, MercadoPagoBrick, CashPaymentWaiting,
                    PaymentTimeout
     kitchen/       KitchenAuth, KitchenOrderCard, KitchenGrid, PendingCashPayments
+    salon/         StaffIdentificationModal, SalonHeader, SalonNav,
+                   ClaimableTaskCard, ReadyOrdersSection,
+                   PendingPaymentsSection, CocktailValidationSection
     business/      BusinessAuth, BusinessLayout, PeriodSelector, KPICard,
                    RevenueChart, BurgerRankingChart, PaymentMethodChart,
                    HoursHeatmap, OperationalMetrics, OrdersTable, OrderRow,
@@ -101,13 +105,14 @@ src/
   data/            burgers.ts
   services/        supabaseClient.ts, ordersService.ts, kitchenService.ts,
                    authService.ts, businessService.ts,
-                   partnersService.ts, settlementsService.ts,
+                   partnersService.ts, settlementsService.ts, salonService.ts,
                    paymentsService.ts, mercadoPagoService.ts
   hooks/           useTable, useActiveOrders, useKitchenAuth,
                    useAuth, useBusinessMetrics, usePeriod,
                    usePartners, useSettlements, usePageTitle,
-                   usePaymentStatus, usePaymentTimeout
-  types/           burger.ts, order.ts, settlement.ts, payment.ts
+                   usePaymentStatus, usePaymentTimeout,
+                   useStaffIdentity, useClaimableTask, useSalonRealtime
+  types/           burger.ts, order.ts, settlement.ts, payment.ts, salon.ts
   pages/           MenuPage, BurgerDetailPage, KitchenPage, BusinessPage,
                    business/BusinessSummaryPage, BusinessAnalyticsPage,
                    BusinessOrdersPage, CheckoutPage, SettlementsPage,
@@ -174,8 +179,21 @@ Pedidos del local.
 | cancel_reason | text nullable | |
 | cancellation_reason | text nullable | `payment_timeout`, `customer`, `manual`, etc. |
 | payment_confirmed_at | timestamptz nullable | momento en que el pedido entra a cocina |
+| claimed_by | text nullable | nombre/iniciales de la moza que tomó la tarea de salón |
+| claimed_at | timestamptz nullable | momento en que se tomó la tarea |
 
 **Trigger:** al actualizar `status`, se llena automáticamente el timestamp correspondiente.
+
+**Mapa de estados objetivo Turno 4b:**
+- `awaiting_payment` — carrito confirmado, esperando pago.
+- `pending` — pagado, todavía no lo vio cocina.
+- `in_kitchen` — cocina lo recibió y está en cola.
+- `preparing` — está en la plancha.
+- `ready` — listo para que salón lo lleve a mesa.
+- `delivered` — entregado a la mesa.
+- `cancelled` — cancelado.
+
+**Compatibilidad actual:** el código existente de cocina/pagos todavía usa `new` como alias legacy para el tramo pagado antes de `preparing`. La migración de salón documenta el mapping y permite `pending`/`in_kitchen`, pero mantiene `new` transicionalmente para no romper `/cocina` hasta que se migre ese flujo.
 
 **Turno 6:** los pedidos nuevos se crean como `status = 'awaiting_payment'`. Solo pasan a `status = 'new'` cuando `payment_status = 'paid'` por webhook de MercadoPago o confirmación manual de efectivo desde cocina. Los pedidos históricos pre-Turno 6 se migran a `payment_status = 'paid'` para preservar reportes.
 
@@ -282,6 +300,7 @@ Auditoría de intentos y confirmaciones de pago.
 
 **Estado actual:**
 - `orders` — anon: INSERT siempre, SELECT últimas 6h, UPDATE últimas 24h (cocina sin auth real todavía). Autenticados owner/partner/kitchen: SELECT full history. Solo owner: UPDATE.
+- `orders` salón — anon/authenticated puede actualizar `claimed_by`, `claimed_at` y `status` en pedidos recientes para señalización social de tareas. El claim no es lock.
 - `order_items` — anon: INSERT, SELECT últimas 6h. Autenticados owner/partner/kitchen: SELECT full history.
 - `profiles` — autenticado: SELECT del propio profile. Owner: SELECT/UPDATE de todos. INSERT solo vía service_role (seed).
 - `products` — público: SELECT donde `active = true`.
@@ -325,6 +344,18 @@ Auditoría de intentos y confirmaciones de pago.
 9. Cocina solo muestra pedidos con `payment_status = 'paid'`; nunca cocina intenciones sin cobrar.
 10. Al llegar a `delivered`, el pedido desaparece de la pantalla de cocina (queda en BD para el dashboard).
 11. Botón secundario "Cancelar" con confirmación.
+
+### Flujo salón
+
+1. La moza abre `/salon` desde su celular.
+2. Si no hay identidad local, ingresa nombre o iniciales. Se guarda en `localStorage` con key `salonStaffName`.
+3. El header muestra logo, nombre tocable para cambiar identidad e indicador de conexión: verde `Conectado`, ámbar `Reconectando`.
+4. Navegación mobile-first con tres tabs y contadores: Listos, Cobros y Cócteles.
+5. **Listos** muestra pedidos con `status = 'ready'`, ordenados por `ready_at` ascendente. Cada card muestra número, mesa, items, nota, tiempo listo y claim.
+6. Botón `Voy yo` setea `claimed_by`/`claimed_at`. Es señalización social solamente: otra moza puede marcar `Entregado` si hace falta.
+7. `Entregado` cambia `status = 'delivered'`, limpia claim y el pedido desaparece de la lista.
+8. Al volver la pestaña a visible (`visibilitychange`), la vista re-fetchea todo y re-suscribe realtime. Un pedido nuevo en `ready` dispara vibración háptica.
+9. **Cobros** y **Cócteles** quedan como contenedores vacíos con "Nada pendiente por ahora" para Turnos 6 y 5.
 
 ### Flujo negocio
 
@@ -471,6 +502,47 @@ Estas funcionalidades NO están en el plan y no se deben implementar sin discusi
 ## 11. CHANGELOG
 
 > Formato: orden cronológico inverso (más reciente arriba). Cada entrada indica fecha, turno y resumen de cambios.
+
+### 2026-05-14 — Turno 4b: interfaz Salón ✅
+
+**Estado:** completado en código. Build y `tsc --noEmit` no ejecutados por restricción explícita del turno.
+
+**Implementado:**
+- Nueva ruta `/salon` para mozas/mozos, separada de `/cocina`, con header compacto, indicador de conexión y tabs mobile-first: Listos, Cobros, Cócteles.
+- Identificación local de staff con `localStorage` key `salonStaffName`; el nombre se puede cambiar tocándolo en el header.
+- Sección **Listos** funcional: lee pedidos `status = 'ready'`, ordena por `ready_at`, permite `Voy yo`, `soltar` y `Entregado`.
+- Sistema de claim reusable (`claimed_by` / `claimed_at`) como señalización social, no lock. Completar tarea limpia el claim.
+- Realtime de salón con canal propio, re-fetch al volver de background vía `visibilitychange`, estado `Conectado` / `Reconectando` y vibración háptica al entrar un nuevo pedido listo.
+- Secciones **Cobros** y **Cócteles** creadas como placeholders para Turnos 6 y 5.
+- Migración `supabase/migrations/20260512000000_salon.sql` agrega campos de claim, policy RLS para update anon/authenticated de pedidos recientes, realtime y documentación SQL del mapa de estados.
+
+**Archivos nuevos:**
+- `src/types/salon.ts`
+- `src/services/salonService.ts`
+- `src/hooks/useStaffIdentity.ts`
+- `src/hooks/useClaimableTask.ts`
+- `src/hooks/useSalonRealtime.ts`
+- `src/components/salon/StaffIdentificationModal.tsx`
+- `src/components/salon/SalonHeader.tsx`
+- `src/components/salon/SalonNav.tsx`
+- `src/components/salon/ClaimableTaskCard.tsx`
+- `src/components/salon/ReadyOrdersSection.tsx`
+- `src/components/salon/PendingPaymentsSection.tsx`
+- `src/components/salon/CocktailValidationSection.tsx`
+- `src/pages/SalonPage.tsx`
+- `supabase/migrations/20260512000000_salon.sql`
+
+**Archivos modificados:**
+- `src/App.tsx`
+- `CLAUDE.md`
+
+**Mapa de estados documentado:**
+- Objetivo: `awaiting_payment` → `pending` → `in_kitchen` → `preparing` → `ready` → `delivered`, con `cancelled` como terminal.
+- Compatibilidad: `new` queda permitido transicionalmente como alias legacy del tramo pagado antes de `preparing`, porque el Turno 6 ya dejó `/cocina` y pagos usando ese valor. No se migraron datos destructivamente para no romper cocina.
+
+**Pendiente / observaciones:**
+- Aplicar la migración en Supabase dev/prod.
+- Verificar manualmente en celular: abrir `/salon`, tomar pedido, soltar, entregar y bloquear/desbloquear pantalla para validar re-fetch.
 
 ### 2026-05-14 — Turno 6: cobro adelantado + MercadoPago ✅
 
@@ -756,4 +828,4 @@ Sugerencias técnicas: `mau.sawicki@gmail.com` (link en footer de la app).
 
 ---
 
-*Última actualización: 2026-05-14, Turno 6 cobro adelantado + MercadoPago.*
+*Última actualización: 2026-05-14, Turno 4b interfaz Salón.*
