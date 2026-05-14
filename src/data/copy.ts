@@ -11,6 +11,7 @@ export const TRACKING_STEPS = [
 ] as const;
 
 export const STATUS_PRIMARY_COPY: Record<OrderStatus, string> = {
+  awaiting_payment: 'Esperando confirmación de pago.',
   new: 'Pedido recibido. Ya avisamos a la cocina.',
   preparing: 'Smasheando tu hamburguesa ahora mismo.',
   ready: '¡Tu hamburguesa está lista!',
@@ -19,6 +20,10 @@ export const STATUS_PRIMARY_COPY: Record<OrderStatus, string> = {
 };
 
 export const STATUS_SECONDARY_COPY: Record<OrderStatus, string[]> = {
+  awaiting_payment: [
+    'El pedido entra a cocina apenas el pago queda confirmado.',
+    'Si elegiste efectivo, la moza pasa por tu mesa antes de preparar.',
+  ],
   new: [
     'La orden ya está en marcha.',
     'El equipo ya tiene tu pedido en pantalla.',

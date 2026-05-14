@@ -1,15 +1,13 @@
 import type { PaymentMethod } from '@/types/order';
 
-const TRANSFER_ALIAS = import.meta.env.VITE_TRANSFER_ALIAS ?? 'islanegra.mp';
-
 interface PaymentSelectorProps {
   value: PaymentMethod | null;
   onChange: (method: PaymentMethod) => void;
 }
 
 const options: { value: PaymentMethod; label: string; hint: string }[] = [
-  { value: 'cash', label: 'Efectivo', hint: 'Pagás en la mesa' },
-  { value: 'transfer', label: 'Transferencia', hint: 'Te mostramos el alias' },
+  { value: 'cash', label: 'Efectivo', hint: '10% off, cobra la moza' },
+  { value: 'mercadopago', label: 'MercadoPago', hint: 'Tarjeta, débito o saldo MP' },
 ];
 
 export function PaymentSelector({ value, onChange }: PaymentSelectorProps) {
@@ -44,11 +42,9 @@ export function PaymentSelector({ value, onChange }: PaymentSelectorProps) {
           );
         })}
       </div>
-      {value === 'transfer' && (
+      {value === 'mercadopago' && (
         <div className="rounded-xl border border-white/[0.08] bg-ink-800 p-3 text-xs text-white/65">
-          Transferí a alias{' '}
-          <span className="font-semibold text-white">{TRANSFER_ALIAS}</span> y
-          mostranos el comprobante.
+          El pedido entra a cocina cuando MercadoPago confirma el cobro.
         </div>
       )}
     </div>

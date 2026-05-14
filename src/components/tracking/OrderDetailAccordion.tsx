@@ -48,12 +48,22 @@ export function OrderDetailAccordion({ order }: OrderDetailAccordionProps) {
             <div className="flex justify-between gap-4">
               <dt className="text-white/45">Pago</dt>
               <dd className="text-white">
-                {order.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}
+                {order.paymentMethod === 'cash' ? 'Efectivo' : 'MercadoPago'}
               </dd>
             </div>
+            {order.discountAmount > 0 && (
+              <div className="flex justify-between gap-4">
+                <dt className="text-white/45">Descuento efectivo</dt>
+                <dd className="tabular-nums text-white">
+                  -{formatPrice(order.discountAmount)}
+                </dd>
+              </div>
+            )}
             <div className="flex justify-between gap-4">
               <dt className="text-white/45">Total</dt>
-              <dd className="tabular-nums text-white">{formatPrice(order.total)}</dd>
+              <dd className="tabular-nums text-white">
+                {formatPrice(order.totalAmount)}
+              </dd>
             </div>
           </dl>
         </div>

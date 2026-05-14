@@ -6,7 +6,11 @@ interface PaymentMethodChartProps {
   data: PaymentSplit[];
 }
 
-const COLORS = ['rgba(255,255,255,0.85)', 'rgba(255,255,255,0.32)'];
+const COLORS = [
+  'rgba(255,255,255,0.85)',
+  'rgba(255,255,255,0.45)',
+  'rgba(255,255,255,0.22)',
+];
 
 export function PaymentMethodChart({ data }: PaymentMethodChartProps) {
   const total = data.reduce((sum, b) => sum + b.amount, 0);

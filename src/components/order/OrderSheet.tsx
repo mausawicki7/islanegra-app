@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import type { Burger } from '@/types/burger';
-import type { Order, PaymentMethod } from '@/types/order';
+import type { PaymentMethod } from '@/types/order';
+import { CASH_DISCOUNT_PERCENT } from '@/config/pricing';
 import { formatPrice } from '@/utils/formatPrice';
+import { calculatePaymentTotals } from '@/utils/calculatePaymentTotals';
 import { createOrder } from '@/services/ordersService';
 import { isSupabaseConfigured } from '@/services/supabaseClient';
 import { QuantitySelector } from './QuantitySelector';
-import { PaymentSelector } from './PaymentSelector';
-import { OrderConfirmation } from './OrderConfirmation';
+import { PaymentMethodSelector } from './PaymentMethodSelector';
 
 interface OrderSheetProps {
   open: boolean;
@@ -24,21 +26,22 @@ export function OrderSheet({
   onClose,
   onRequestTable,
 }: OrderSheetProps) {
+  const navigate = useNavigate();
   const [quantity, setQuantity] = useState(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [payment, setPayment] = useState<PaymentMethod | null>(null);
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confirmed, setConfirmed] = useState<Order | null>(null);
 
   useEffect(() => {
     if (open) {
       setQuantity(1);
+      setStep(1);
       setPayment(null);
       setNote('');
       setSubmitting(false);
       setError(null);
-      setConfirmed(null);
     }
   }, [open, burger?.id]);
 
@@ -53,7 +56,11 @@ export function OrderSheet({
 
   if (!open || !burger) return null;
 
-  const total = burger.price * quantity;
+  const subtotal = burger.price * quantity;
+  const cashTotals = calculatePaymentTotals(subtotal, 'cash');
+  const mercadoPagoTotals = calculatePaymentTotals(subtotal, 'mercadopago');
+  const selectedTotals = calculatePaymentTotals(subtotal, payment);
+  const canContinueCart = !!tableNumber && !submitting;
   const canSubmit = !!payment && !!tableNumber && !submitting;
 
   const submit = async () => {
@@ -76,7 +83,9 @@ export function OrderSheet({
       const order = await createOrder({
         tableNumber,
         paymentMethod: payment,
+        paymentStatus: payment === 'cash' ? 'unpaid' : 'pending',
         note: note.trim() ? note.trim() : null,
+        totals: selectedTotals,
         items: [
           {
             productId: burger.id,
@@ -87,7 +96,9 @@ export function OrderSheet({
           },
         ],
       });
-      setConfirmed(order);
+      setStep(3);
+      onClose();
+      navigate(`/checkout/${order.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo enviar el pedido');
     } finally {
@@ -125,12 +136,9 @@ export function OrderSheet({
           <X size={18} />
         </button>
 
-        {confirmed ? (
-          <OrderConfirmation order={confirmed} onClose={onClose} />
-        ) : (
-          <div className="flex flex-col overflow-y-auto px-6 pb-6 pt-8">
+        <div className="flex flex-col overflow-y-auto px-6 pb-6 pt-8">
             <p className="text-[11px] uppercase tracking-[0.32em] text-white/45">
-              Pedido
+              Pedido · Paso {step}/3
             </p>
             <h2 className="mt-2 text-balance font-semibold uppercase tracking-tightest text-white text-2xl leading-tight">
               {burger.name}
@@ -139,36 +147,57 @@ export function OrderSheet({
               {formatPrice(burger.price)} c/u
             </p>
 
-            <div className="mt-7 flex items-center justify-between">
-              <span className="text-xs uppercase tracking-[0.24em] text-white/45">
-                Cantidad
-              </span>
-              <QuantitySelector value={quantity} onChange={setQuantity} />
-            </div>
+            {step === 1 && (
+              <>
+                <div className="mt-7 flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-[0.24em] text-white/45">
+                    Cantidad
+                  </span>
+                  <QuantitySelector value={quantity} onChange={setQuantity} />
+                </div>
 
-            <div className="mt-7">
-              <p className="mb-3 text-xs uppercase tracking-[0.24em] text-white/45">
-                Pago
-              </p>
-              <PaymentSelector value={payment} onChange={setPayment} />
-            </div>
+                <div className="mt-7">
+                  <label
+                    htmlFor="order-note"
+                    className="mb-3 block text-xs uppercase tracking-[0.24em] text-white/45"
+                  >
+                    Nota <span className="text-white/30">(opcional)</span>
+                  </label>
+                  <textarea
+                    id="order-note"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    rows={2}
+                    placeholder="Sin cebolla, punto medio..."
+                    className="w-full resize-none rounded-xl border border-white/[0.08] bg-ink-800 px-3 py-3 text-base text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+                  />
+                </div>
+              </>
+            )}
 
-            <div className="mt-7">
-              <label
-                htmlFor="order-note"
-                className="mb-3 block text-xs uppercase tracking-[0.24em] text-white/45"
-              >
-                Nota <span className="text-white/30">(opcional)</span>
-              </label>
-              <textarea
-                id="order-note"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                rows={2}
-                placeholder="Sin cebolla, punto medio…"
-                className="w-full resize-none rounded-xl border border-white/[0.08] bg-ink-800 px-3 py-3 text-base text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
-              />
-            </div>
+            {step === 2 && (
+              <div className="mt-7">
+                <p className="mb-3 text-xs uppercase tracking-[0.24em] text-white/45">
+                  Pago
+                </p>
+                <PaymentMethodSelector
+                  value={payment}
+                  cashTotals={cashTotals}
+                  mercadoPagoTotals={mercadoPagoTotals}
+                  onChange={setPayment}
+                />
+                <p className="mt-4 text-xs leading-5 text-white/45">
+                  El pedido entra a cocina cuando el pago queda confirmado.
+                  Efectivo tiene {CASH_DISCOUNT_PERCENT}% off.
+                </p>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="mt-8 rounded-2xl border border-white/[0.08] bg-ink-800 p-5 text-sm text-white/60">
+                Preparando checkout...
+              </div>
+            )}
 
             {!tableNumber && (
               <button
@@ -195,20 +224,53 @@ export function OrderSheet({
                   Total
                 </p>
                 <p className="truncate text-xl text-white tabular-nums">
-                  {formatPrice(total)}
+                  {formatPrice(selectedTotals.total)}
                 </p>
+                {selectedTotals.discount > 0 && (
+                  <p className="mt-0.5 text-xs text-white/45 tabular-nums">
+                    Ahorras {formatPrice(selectedTotals.discount)}
+                  </p>
+                )}
               </div>
-              <button
-                type="button"
-                onClick={submit}
-                disabled={!canSubmit}
-                className="inline-flex h-12 shrink-0 items-center justify-center rounded-full bg-white px-5 text-sm font-semibold uppercase tracking-[0.18em] text-black transition hover:bg-white/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-white/30 disabled:text-black/60 sm:px-6 sm:tracking-[0.2em]"
-              >
-                {submitting ? 'Enviando…' : 'Confirmar'}
-              </button>
+              <div className="flex shrink-0 items-center gap-2">
+                {step > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setStep((current) => (current === 3 ? 2 : 1))}
+                    disabled={submitting}
+                    className="inline-flex h-12 items-center justify-center rounded-full border border-white/15 px-4 text-xs font-semibold uppercase tracking-[0.16em] text-white/70 transition hover:border-white/30 hover:text-white disabled:opacity-50"
+                  >
+                    Volver
+                  </button>
+                )}
+                {step === 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!tableNumber) {
+                        onRequestTable();
+                        return;
+                      }
+                      setStep(2);
+                    }}
+                    disabled={!canContinueCart}
+                    className="inline-flex h-12 items-center justify-center rounded-full bg-white px-5 text-sm font-semibold uppercase tracking-[0.18em] text-black transition hover:bg-white/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-white/30 disabled:text-black/60 sm:px-6 sm:tracking-[0.2em]"
+                  >
+                    Seguir
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={submit}
+                    disabled={!canSubmit}
+                    className="inline-flex h-12 items-center justify-center rounded-full bg-white px-5 text-sm font-semibold uppercase tracking-[0.18em] text-black transition hover:bg-white/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-white/30 disabled:text-black/60 sm:px-6 sm:tracking-[0.2em]"
+                  >
+                    {submitting ? 'Creando...' : 'Pagar'}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        )}
       </div>
     </div>
   );

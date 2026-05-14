@@ -85,16 +85,22 @@ export async function fetchSettlementByMonth(
   return data ? mapSettlement(data as SettlementRow) : null;
 }
 
-/** Sum of orders.total with status delivered between [start, end). */
+/** Sum of collected revenue with status delivered between [start, end). */
 async function fetchMonthRevenue(monthIso: string): Promise<number> {
   const { data, error } = await supabase
     .from('orders')
-    .select('total')
+    .select('total_amount, total')
     .eq('status', 'delivered')
     .gte('created_at', startOfMonthIso(monthIso))
     .lt('created_at', endOfMonthIso(monthIso));
   if (error) throw new Error(error.message);
-  return (data ?? []).reduce((sum, r) => sum + Number((r as { total: number }).total), 0);
+  return (data ?? []).reduce(
+    (sum, r) => {
+      const row = r as { total_amount: number | null; total: number };
+      return sum + Number(row.total_amount ?? row.total);
+    },
+    0,
+  );
 }
 
 async function fetchEarliestDeliveredMonth(): Promise<string | null> {

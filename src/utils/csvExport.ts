@@ -48,7 +48,7 @@ export function ordersToCsv(orders: BusinessOrder[]): string {
         csvEscape(o.orderNumber),
         csvEscape(o.tableNumber),
         csvEscape(fmtDate(o.createdAt)),
-        csvEscape(o.total),
+        csvEscape(o.totalAmount),
         csvEscape(o.paymentMethod),
         csvEscape(o.status),
         csvEscape(fmtItems(o)),

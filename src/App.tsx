@@ -3,6 +3,7 @@ import { MenuPage } from '@/pages/MenuPage';
 import { BurgerDetailPage } from '@/pages/BurgerDetailPage';
 import { KitchenPage } from '@/pages/KitchenPage';
 import { BusinessPage } from '@/pages/BusinessPage';
+import { CheckoutPage } from '@/pages/CheckoutPage';
 import { OrderTrackingPage } from '@/pages/OrderTrackingPage';
 
 export default function App() {
@@ -12,6 +13,7 @@ export default function App() {
         <Route path="/" element={<Navigate to="/menu" replace />} />
         <Route path="/menu" element={<MenuPage />} />
         <Route path="/burger/:id" element={<BurgerDetailPage />} />
+        <Route path="/checkout/:orderId" element={<CheckoutPage />} />
         <Route path="/pedido/:orderId" element={<OrderTrackingPage />} />
         <Route path="/cocina" element={<KitchenPage />} />
         <Route path="/negocio/*" element={<BusinessPage />} />

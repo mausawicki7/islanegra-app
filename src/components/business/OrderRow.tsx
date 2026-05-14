@@ -1,8 +1,10 @@
 import type { BusinessOrder } from '@/services/businessService';
-import type { OrderStatus, PaymentMethod } from '@/types/order';
+import type { OrderStatus } from '@/types/order';
+import type { LegacyPaymentMethod } from '@/types/payment';
 import { formatPrice } from '@/utils/formatPrice';
 
 const STATUS: Record<OrderStatus, { label: string; tone: string }> = {
+  awaiting_payment: { label: 'Esperando pago', tone: 'bg-amber-300/15 text-amber-200' },
   new: { label: 'Nuevo', tone: 'bg-white/10 text-white' },
   preparing: { label: 'Preparando', tone: 'bg-amber-300/15 text-amber-200' },
   ready: { label: 'Listo', tone: 'bg-emerald-400/15 text-emerald-300' },
@@ -10,9 +12,10 @@ const STATUS: Record<OrderStatus, { label: string; tone: string }> = {
   cancelled: { label: 'Cancelado', tone: 'bg-red-400/15 text-red-300' },
 };
 
-const PAYMENT_LABEL: Record<PaymentMethod, string> = {
+const PAYMENT_LABEL: Record<LegacyPaymentMethod, string> = {
   cash: 'Efectivo',
-  transfer: 'Transferencia',
+  mercadopago: 'MercadoPago',
+  transfer: 'Transferencia legacy',
 };
 
 function fmtDate(iso: string): string {
@@ -51,11 +54,11 @@ export function OrderRow({ order }: OrderRowProps) {
         {itemsSummary(order)}
       </td>
       <td className="py-3 pr-3 align-top text-white tabular-nums">
-        {formatPrice(order.total)}
+        {formatPrice(order.totalAmount)}
       </td>
       <td className="py-3 pr-3 align-top">
         <span className="inline-flex items-center rounded-full bg-white/5 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-white/70">
-          {PAYMENT_LABEL[order.paymentMethod]}
+          {order.paymentMethod ? PAYMENT_LABEL[order.paymentMethod] : 'Legacy'}
         </span>
       </td>
       <td className="py-3 pr-3 align-top">

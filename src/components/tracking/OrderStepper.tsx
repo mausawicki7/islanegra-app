@@ -2,6 +2,7 @@ import { TRACKING_STEPS } from '@/data/copy';
 import type { OrderStatus } from '@/types/order';
 
 const STEP_INDEX: Record<OrderStatus, number> = {
+  awaiting_payment: 0,
   new: 0,
   preparing: 1,
   ready: 2,

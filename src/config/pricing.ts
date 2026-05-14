@@ -1,0 +1,2 @@
+export const CASH_DISCOUNT_PERCENT = 10;
+export const PAYMENT_TIMEOUT_MINUTES = 10;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Banknote, Building2, X } from 'lucide-react';
+import { Banknote, CreditCard, X } from 'lucide-react';
 import type { Order, OrderStatus } from '@/types/order';
 import { formatPrice } from '@/utils/formatPrice';
 import { minutesSince, timeAgo } from '@/utils/timeAgo';
@@ -13,6 +13,7 @@ interface KitchenOrderCardProps {
 }
 
 const STATE_LABELS: Record<OrderStatus, string> = {
+  awaiting_payment: 'Esperando pago',
   new: 'Nuevo',
   preparing: 'En preparación',
   ready: 'Listo',
@@ -21,6 +22,7 @@ const STATE_LABELS: Record<OrderStatus, string> = {
 };
 
 const ADVANCE_LABELS: Record<OrderStatus, string> = {
+  awaiting_payment: '',
   new: 'Empezar a preparar',
   preparing: 'Marcar listo',
   ready: 'Entregar / Cobrar',
@@ -122,11 +124,11 @@ export function KitchenOrderCard({
           {order.paymentMethod === 'cash' ? (
             <Banknote size={14} />
           ) : (
-            <Building2 size={14} />
+            <CreditCard size={14} />
           )}
-          {order.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}
+          {order.paymentMethod === 'cash' ? 'Efectivo' : 'MP'}
         </span>
-        <span className="tabular-nums">{formatPrice(order.total)}</span>
+        <span className="tabular-nums">{formatPrice(order.totalAmount)}</span>
       </div>
 
       <div className="mt-1 flex items-stretch gap-2">

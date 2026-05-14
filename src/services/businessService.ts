@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
-import type { Order, OrderStatus, PaymentMethod } from '@/types/order';
+import type { Order, OrderStatus } from '@/types/order';
+import type { LegacyPaymentMethod, PaymentStatus } from '@/types/payment';
 
 interface OrderRow {
   id: string;
@@ -7,7 +8,13 @@ interface OrderRow {
   table_number: string;
   subtotal: number | string;
   total: number | string;
-  payment_method: PaymentMethod;
+  subtotal_amount?: number | string | null;
+  discount_amount?: number | string | null;
+  total_amount?: number | string | null;
+  payment_method: LegacyPaymentMethod | null;
+  payment_status?: PaymentStatus | null;
+  payment_gateway_id?: string | null;
+  payment_confirmed_at?: string | null;
   note: string | null;
   status: OrderStatus;
   created_at: string;
@@ -43,7 +50,13 @@ function mapOrder(row: OrderRow): BusinessOrder {
     tableNumber: row.table_number,
     subtotal: Number(row.subtotal),
     total: Number(row.total),
+    subtotalAmount: Number(row.subtotal_amount ?? row.subtotal),
+    discountAmount: Number(row.discount_amount ?? 0),
+    totalAmount: Number(row.total_amount ?? row.total),
     paymentMethod: row.payment_method,
+    paymentStatus: row.payment_status ?? 'paid',
+    paymentGatewayId: row.payment_gateway_id ?? null,
+    paymentConfirmedAt: row.payment_confirmed_at ?? null,
     note: row.note,
     status: row.status,
     createdAt: row.created_at,
@@ -92,7 +105,7 @@ export interface KpiSummary {
 
 export function computeKpis(orders: BusinessOrder[]): KpiSummary {
   const delivered = orders.filter((o) => o.status === 'delivered');
-  const revenue = delivered.reduce((sum, o) => sum + o.total, 0);
+  const revenue = delivered.reduce((sum, o) => sum + o.totalAmount, 0);
   const count = delivered.length;
   const averageTicket = count > 0 ? revenue / count : 0;
 
@@ -125,7 +138,7 @@ export function computeRevenueByDay(
   for (const o of orders) {
     if (o.status !== 'delivered') continue;
     const key = o.createdAt.slice(0, 10);
-    totals.set(key, (totals.get(key) ?? 0) + o.total);
+    totals.set(key, (totals.get(key) ?? 0) + o.totalAmount);
   }
   return buckets.map((b) => ({
     date: b.date,
@@ -154,20 +167,22 @@ export function computeBurgerRanking(orders: BusinessOrder[]): BurgerRanking[] {
 }
 
 export interface PaymentSplit {
-  method: PaymentMethod;
+  method: LegacyPaymentMethod;
   label: string;
   amount: number;
   count: number;
 }
 
 export function computePaymentSplit(orders: BusinessOrder[]): PaymentSplit[] {
-  const buckets: Record<PaymentMethod, PaymentSplit> = {
+  const buckets: Record<LegacyPaymentMethod, PaymentSplit> = {
     cash: { method: 'cash', label: 'Efectivo', amount: 0, count: 0 },
-    transfer: { method: 'transfer', label: 'Transferencia', amount: 0, count: 0 },
+    mercadopago: { method: 'mercadopago', label: 'MercadoPago', amount: 0, count: 0 },
+    transfer: { method: 'transfer', label: 'Transferencia legacy', amount: 0, count: 0 },
   };
   for (const o of orders) {
     if (o.status !== 'delivered') continue;
-    buckets[o.paymentMethod].amount += o.total;
+    if (!o.paymentMethod) continue;
+    buckets[o.paymentMethod].amount += o.totalAmount;
     buckets[o.paymentMethod].count += 1;
   }
   return Object.values(buckets);
@@ -233,7 +248,7 @@ export function filterOrders(
   orders: BusinessOrder[],
   filters: {
     status?: OrderStatus | 'all';
-    paymentMethod?: PaymentMethod | 'all';
+    paymentMethod?: LegacyPaymentMethod | 'all';
     table?: string;
     search?: string;
   },

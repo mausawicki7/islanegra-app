@@ -2,6 +2,8 @@ import { supabase } from './supabaseClient';
 import type { Order, OrderInput } from '@/types/order';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { OrderStatus } from '@/types/order';
+import type { LegacyPaymentMethod, PaymentStatus } from '@/types/payment';
+import { calculatePaymentTotals } from '@/utils/calculatePaymentTotals';
 
 interface OrderRow {
   id: string;
@@ -9,7 +11,13 @@ interface OrderRow {
   table_number: string;
   subtotal: number | string;
   total: number | string;
-  payment_method: 'cash' | 'transfer';
+  subtotal_amount?: number | string | null;
+  discount_amount?: number | string | null;
+  total_amount?: number | string | null;
+  payment_method: LegacyPaymentMethod | null;
+  payment_status?: PaymentStatus | null;
+  payment_gateway_id?: string | null;
+  payment_confirmed_at?: string | null;
   note: string | null;
   status: OrderStatus;
   created_at: string;
@@ -34,7 +42,13 @@ function mapOrder(row: OrderRow): Order {
     tableNumber: row.table_number,
     subtotal: Number(row.subtotal),
     total: Number(row.total),
+    subtotalAmount: Number(row.subtotal_amount ?? row.subtotal),
+    discountAmount: Number(row.discount_amount ?? 0),
+    totalAmount: Number(row.total_amount ?? row.total),
     paymentMethod: row.payment_method,
+    paymentStatus: row.payment_status ?? 'paid',
+    paymentGatewayId: row.payment_gateway_id ?? null,
+    paymentConfirmedAt: row.payment_confirmed_at ?? null,
     note: row.note,
     status: row.status,
     createdAt: row.created_at,
@@ -66,8 +80,10 @@ function computeSubtotal(items: OrderInput['items']): number {
 
 export async function createOrder(input: OrderInput): Promise<Order> {
   const subtotal = computeSubtotal(input.items);
-  const total = subtotal;
+  const totals = input.totals ?? calculatePaymentTotals(subtotal, input.paymentMethod);
   const orderNumber = generateOrderNumber();
+  const paymentStatus =
+    input.paymentStatus ?? (input.paymentMethod === 'cash' ? 'unpaid' : 'pending');
 
   const { data: orderRow, error: orderErr } = await supabase
     .from('orders')
@@ -75,10 +91,14 @@ export async function createOrder(input: OrderInput): Promise<Order> {
       order_number: orderNumber,
       table_number: input.tableNumber,
       subtotal,
-      total,
+      total: totals.subtotal,
       payment_method: input.paymentMethod,
+      payment_status: paymentStatus,
+      subtotal_amount: totals.subtotal,
+      discount_amount: totals.discount,
+      total_amount: totals.total,
       note: input.note,
-      status: 'new',
+      status: 'awaiting_payment',
     })
     .select()
     .single();

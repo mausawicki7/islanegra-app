@@ -87,8 +87,10 @@ src/
   components/
     layout/        Header, AppShell, TablePrompt, Footer
     menu/          MenuHero, BurgerGrid, BurgerCard, BurgerDetail, BurgerImage
-    order/         OrderSheet, QuantitySelector, PaymentSelector, OrderConfirmation
-    kitchen/       KitchenAuth, KitchenOrderCard, KitchenGrid
+    order/         OrderSheet, QuantitySelector, PaymentSelector, OrderConfirmation,
+                   PaymentMethodSelector, MercadoPagoBrick, CashPaymentWaiting,
+                   PaymentTimeout
+    kitchen/       KitchenAuth, KitchenOrderCard, KitchenGrid, PendingCashPayments
     business/      BusinessAuth, BusinessLayout, PeriodSelector, KPICard,
                    RevenueChart, BurgerRankingChart, PaymentMethodChart,
                    HoursHeatmap, OperationalMetrics, OrdersTable, OrderRow,
@@ -99,17 +101,21 @@ src/
   data/            burgers.ts
   services/        supabaseClient.ts, ordersService.ts, kitchenService.ts,
                    authService.ts, businessService.ts,
-                   partnersService.ts, settlementsService.ts
+                   partnersService.ts, settlementsService.ts,
+                   paymentsService.ts, mercadoPagoService.ts
   hooks/           useTable, useActiveOrders, useKitchenAuth,
                    useAuth, useBusinessMetrics, usePeriod,
-                   usePartners, useSettlements, usePageTitle
-  types/           burger.ts, order.ts, settlement.ts
+                   usePartners, useSettlements, usePageTitle,
+                   usePaymentStatus, usePaymentTimeout
+  types/           burger.ts, order.ts, settlement.ts, payment.ts
   pages/           MenuPage, BurgerDetailPage, KitchenPage, BusinessPage,
                    business/BusinessSummaryPage, BusinessAnalyticsPage,
-                   BusinessOrdersPage, SettlementsPage,
+                   BusinessOrdersPage, CheckoutPage, SettlementsPage,
                    SettlementDetailPage, PartnersPage, MyEarningsPage
   utils/           formatPrice, getTableFromUrl, timeAgo, sound,
-                   periodHelpers, csvExport, monthHelpers
+                   periodHelpers, csvExport, monthHelpers,
+                   calculatePaymentTotals
+  config/          pricing.ts, rewards.ts
   App.tsx
   main.tsx
 
@@ -152,17 +158,26 @@ Pedidos del local.
 | table_number | text | |
 | subtotal | numeric | |
 | total | numeric | |
-| payment_method | text | `cash` \| `transfer` |
+| payment_method | text | `cash` \| `mercadopago` (`transfer` queda legacy histórico) |
+| payment_status | text | `unpaid` \| `pending` \| `paid` \| `failed` \| `refunded` |
+| payment_gateway_id | text nullable | ID de pago MercadoPago |
+| subtotal_amount | numeric nullable | precio original antes de descuentos |
+| discount_amount | numeric | descuento aplicado, default 0 |
+| total_amount | numeric nullable | monto final efectivamente cobrado |
 | note | text nullable | |
-| status | text | `new` \| `preparing` \| `ready` \| `delivered` \| `cancelled` |
+| status | text | `awaiting_payment` \| `new` \| `preparing` \| `ready` \| `delivered` \| `cancelled` |
 | created_at | timestamp | |
 | preparing_at | timestamp nullable | autosellado por trigger |
 | ready_at | timestamp nullable | autosellado por trigger |
 | delivered_at | timestamp nullable | autosellado por trigger |
 | cancelled_at | timestamp nullable | autosellado por trigger |
 | cancel_reason | text nullable | |
+| cancellation_reason | text nullable | `payment_timeout`, `customer`, `manual`, etc. |
+| payment_confirmed_at | timestamptz nullable | momento en que el pedido entra a cocina |
 
 **Trigger:** al actualizar `status`, se llena automáticamente el timestamp correspondiente.
+
+**Turno 6:** los pedidos nuevos se crean como `status = 'awaiting_payment'`. Solo pasan a `status = 'new'` cuando `payment_status = 'paid'` por webhook de MercadoPago o confirmación manual de efectivo desde cocina. Los pedidos históricos pre-Turno 6 se migran a `payment_status = 'paid'` para preservar reportes.
 
 #### `order_items`
 Items dentro de cada pedido (preparado para multi-producto desde día 1).
@@ -242,6 +257,27 @@ Snapshot por socio dentro de una settlement.
 - `confirm_monthly_settlement(date)` — owner-only. Toma snapshot del cobrado del mes, transiciona `draft → confirmed` o crea la row si no existe, e inserta payouts para todos los socios activos. Idempotente.
 - `auto_confirm_past_months()` — owner-only. Itera desde el primer mes con ventas y confirma todos los meses pasados. Idempotente.
 
+#### `payments`
+Auditoría de intentos y confirmaciones de pago.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| id | uuid PK | |
+| order_id | uuid FK | |
+| amount | numeric(10,2) | |
+| method | text | `mercadopago` \| `cash` |
+| status | text | `pending` \| `approved` \| `rejected` \| `refunded` |
+| gateway_payment_id | text nullable | ID de pago MP |
+| gateway_status | text nullable | status raw MP |
+| gateway_status_detail | text nullable | detail raw MP |
+| gateway_payload | jsonb nullable | payload completo para auditoría |
+| collected_by | text nullable | futuro uso para moza/caja |
+| idempotency_key | text unique | evita duplicados de webhook |
+| created_at / updated_at | timestamptz | |
+
+**Functions:**
+- `cancel_stale_unpaid_orders()` — cancela pedidos `awaiting_payment` sin pago confirmado con más de 10 minutos. La migración intenta programarla con pg_cron y degrada con `NOTICE` si la extensión no está habilitada.
+
 ### RLS (Row Level Security)
 
 **Estado actual:**
@@ -252,7 +288,8 @@ Snapshot por socio dentro de una settlement.
 - `partners` — owner/partner: SELECT. Solo owner: INSERT/UPDATE/DELETE.
 - `monthly_settlements` — owner/partner: SELECT. Solo owner: INSERT/UPDATE (con trigger de inmutabilidad).
 - `partner_payouts` — owner/partner: SELECT. Solo owner: INSERT/UPDATE (con trigger de inmutabilidad — solo `paid`/`paid_at` mutables).
-- Realtime habilitado para `orders` y `order_items` (REPLICA IDENTITY FULL).
+- `payments` — owner/partner: SELECT. Anon/authenticated: INSERT para intentos `pending` y confirmación cash `approved`; SELECT de pagos vinculados a pedidos recientes. Edge Functions usan service role.
+- Realtime habilitado para `orders`, `order_items` y `payments` (REPLICA IDENTITY FULL).
 
 **Pre-prod:**
 - Reemplazar la policy `orders_anon_update` de 24h por una que limite al rol `kitchen` cuando exista auth real para staff de cocina.
@@ -267,22 +304,27 @@ Snapshot por socio dentro de una settlement.
 2. Ve grid con 6 burgers (1 col mobile / 2 tablet / 3 desktop).
 3. Card entera es tappeable → navega a `/burger/:id` para ver detalle.
 4. Botón "Pedila" sobre la card abre OrderSheet (bottom sheet en mobile, modal en desktop) sin navegar.
-5. Selecciona cantidad → método de pago (efectivo o transferencia) → nota opcional → confirma.
-6. Pantalla de confirmación con número de pedido, mesa y estado inicial.
-7. El pedido se guarda en `orders` + `order_items` con status `new`.
+5. Selecciona cantidad → nota opcional → confirma carrito.
+6. Elige método de pago:
+   - Efectivo: 10% off, pedido queda esperando cobro en mesa.
+   - MercadoPago: monto completo, pago online vía Brick/Wallet.
+7. El pedido se guarda en `orders` + `order_items` con `status = 'awaiting_payment'`.
+8. `/checkout/:orderId` muestra timer de 10 minutos. Si vence, cancela con `cancellation_reason = 'payment_timeout'`.
+9. Cuando `payment_status = 'paid'`, navega automáticamente al seguimiento `/pedido/:id`.
 
 ### Flujo cocina
 
 1. Staff abre `/cocina` en monitor o tablet fijo.
 2. Ingresa PIN (`VITE_KITCHEN_PIN`, actualmente `1234`). Se guarda en sessionStorage.
-3. Ve lista de pedidos activos (`new` / `preparing` / `ready`), ordenados por antigüedad ascendente.
-4. Suscripción Supabase Realtime: nuevos pedidos aparecen automáticamente sin recargar.
-5. Cuando entra un pedido nuevo, suena un chime (Web Audio API, 880→1320 Hz, sin assets externos).
+3. Ve panel de cobranzas pendientes en efectivo arriba y lista de pedidos activos pagados (`new` / `preparing` / `ready`) abajo.
+4. Suscripción Supabase Realtime: nuevos pedidos pagados aparecen automáticamente sin recargar.
+5. Cuando entra un pedido pagado o una nueva cobranza en efectivo pendiente, suena un chime (Web Audio API, 880→1320 Hz, sin assets externos).
 6. Cada card muestra: número grande, mesa enorme, items con cantidad, nota si existe, método de pago, tiempo transcurrido ("hace 3 min").
 7. Borde de color según estado: ámbar si `preparing`, verde si `ready`. Si pasa más de 8 min en `new`, escalado a rojo.
 8. Tap en botón principal avanza estado: `new` → `preparing` → `ready` → `delivered`.
-9. Al llegar a `delivered`, el pedido desaparece de la pantalla de cocina (queda en BD para el dashboard).
-10. Botón secundario "Cancelar" con confirmación.
+9. Cocina solo muestra pedidos con `payment_status = 'paid'`; nunca cocina intenciones sin cobrar.
+10. Al llegar a `delivered`, el pedido desaparece de la pantalla de cocina (queda en BD para el dashboard).
+11. Botón secundario "Cancelar" con confirmación.
 
 ### Flujo negocio
 
@@ -297,7 +339,7 @@ Snapshot por socio dentro de una settlement.
    - Deriva KPIs, ranking de burgers, distribución de pago, heatmap, tiempos operativos.
 7. Vistas:
    - **Resumen** — 4 KPI cards: ingresos cobrados, pedidos cobrados, ticket promedio, burger más vendida. Cada una con delta vs período anterior.
-   - **Análisis** — RevenueChart (barras por día), BurgerRankingChart (barras horizontales top 6), PaymentMethodChart (donut efectivo vs transferencia), HoursHeatmap (7×24, Lun-Dom), OperationalMetrics (preparing→ready y created→delivered).
+   - **Análisis** — RevenueChart (barras por día), BurgerRankingChart (barras horizontales top 6), PaymentMethodChart (donut efectivo vs MercadoPago), HoursHeatmap (7×24, Lun-Dom), OperationalMetrics (preparing→ready y created→delivered).
    - **Pedidos** — tabla histórica con filtros (estado, pago, mesa, búsqueda por número), paginación 25/pág, botón Exportar CSV.
 8. Todas las métricas de ingresos filtran por `status = 'delivered'`. La vista Pedidos muestra todo el histórico (incluye cancelados).
 9. Solo `owner` (Juan) puede escribir (`orders_owner_write` policy). Mauricio/Sebastián son lectura total.
@@ -346,9 +388,19 @@ VITE_SUPABASE_URL=...
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...   # naming nuevo de Supabase (reemplaza ANON_KEY)
 SUPABASE_SECRET_KEY=sb_secret_...                  # solo para scripts admin (seed), nunca al cliente
 VITE_KITCHEN_PIN=1234                              # cambiar antes de prod
-VITE_TRANSFER_ALIAS=islanegra.mp                   # alias real cuando esté
+VITE_MP_PUBLIC_KEY=APP_USR-...                     # pública, frontend MP
+VITE_MP_ENVIRONMENT=sandbox                        # sandbox | production
 SUPABASE_PROJECT_REF=...                           # opcional, para supabase link
 SUPABASE_ACCESS_TOKEN=...                          # opcional, para supabase CLI
+```
+
+Supabase Edge Function secrets (no van al frontend):
+
+```
+MP_ACCESS_TOKEN=APP_USR-...                        # privado, sandbox/prod
+MP_WEBHOOK_SECRET=...                              # firma HMAC webhook MP
+MP_ENVIRONMENT=sandbox                             # sandbox | production
+SITE_URL=https://islanegra.com.ar                  # back_urls checkout
 ```
 
 > **Nota:** Supabase migró de `anon` / `service_role` a `publishable` / `secret` keys. El proyecto usa la convención nueva. Las legacy keys (`eyJ...` JWTs) siguen funcionando si las preferís en proyectos viejos.
@@ -376,7 +428,7 @@ SUPABASE_ACCESS_TOKEN=...                          # opcional, para supabase CLI
 - Sin pedir email, teléfono ni nombre al cliente.
 - Card entera tappeable → detalle. Botón "Pedila" sobre la card → pedido directo.
 - Pedido completable en menos de 30 segundos.
-- Solo pago en efectivo y transferencia (tarjeta queda para fase 2).
+- Solo pago en efectivo y MercadoPago. Transferencia manual queda fuera del MVP.
 
 ### Visual
 
@@ -390,7 +442,7 @@ SUPABASE_ACCESS_TOKEN=...                          # opcional, para supabase CLI
 
 ### Estado y datos
 
-- **Entregado = Cobrado.** No hay estado "pagado" separado. Cuando cocina marca `delivered`, eso significa que el cliente recibió y pagó.
+- **Liquidación:** sigue usando `delivered` como base de cobrado para socios. Operativamente, desde Turno 6 el pedido entra a cocina solo si `payment_status = 'paid'`.
 - Items array desde día 1, aunque por ahora solo se venden burgers de a una.
 - Timestamps de cada transición de estado guardados para métricas operativas.
 
@@ -400,7 +452,6 @@ SUPABASE_ACCESS_TOKEN=...                          # opcional, para supabase CLI
 
 Estas funcionalidades NO están en el plan y no se deben implementar sin discusión:
 
-- Pagos con tarjeta o Mercado Pago.
 - Login de cliente / cuentas de usuario.
 - Notificaciones por WhatsApp.
 - Sistema de stock.
@@ -411,12 +462,62 @@ Estas funcionalidades NO están en el plan y no se deben implementar sin discusi
 - Gestión de gastos del local (Juan absorbe todo, no se trackea).
 - Impresión automática en cocina.
 - Multilocación.
+- Reembolsos automáticos de MercadoPago.
+- Propinas integradas.
+- Split payments.
 
 ---
 
 ## 11. CHANGELOG
 
 > Formato: orden cronológico inverso (más reciente arriba). Cada entrada indica fecha, turno y resumen de cambios.
+
+### 2026-05-14 — Turno 6: cobro adelantado + MercadoPago ✅
+
+**Estado:** completado en código. Build y `tsc --noEmit` no ejecutados por restricción explícita del turno.
+
+**Implementado:**
+- Migración `supabase/migrations/20260514000000_payments.sql` con columnas de pago en `orders`, status `awaiting_payment`, tabla `payments`, RLS, realtime y función `cancel_stale_unpaid_orders()` con intento de schedule pg_cron dentro de bloque tolerante a falta de extensión.
+- Backfill: pedidos históricos quedan como `payment_status = 'paid'`, con `subtotal_amount`, `discount_amount`, `total_amount` y `payment_confirmed_at` poblados desde datos existentes.
+- Edge Function `create-payment-preference`: crea preferencia MercadoPago con `external_reference = orders.id`, `notification_url`, `back_urls` basadas en `SITE_URL`, idempotencia por order y devuelve `preferenceId` + `initPoint`.
+- Edge Function `mp-webhook`: valida firma HMAC-SHA256 (`x-signature` + `x-request-id`), consulta el pago real a la API de MP, inserta auditoría en `payments`, y actualiza el pedido de forma idempotente.
+- Frontend: nuevo checkout `/checkout/:orderId`, cálculo centralizado en `calculatePaymentTotals`, selector Efectivo/MP con 10% off en efectivo, timer de 10 minutos, espera de efectivo, fallback de polling + realtime, y wrapper de MercadoPago con `@mercadopago/sdk-react`.
+- Cocina: la cola principal filtra `payment_status = 'paid'`; panel `PendingCashPayments` muestra cobranzas cash pendientes, suena chime y permite marcar "Cobrado" para que el pedido entre a cocina.
+- Dashboard negocio: labels y filtros actualizados para MercadoPago/Efectivo, manteniendo `transfer` como legacy histórico.
+
+**Archivos nuevos:**
+- `src/config/pricing.ts`
+- `src/types/payment.ts`
+- `src/types/mercadopago-sdk-react.d.ts`
+- `src/utils/calculatePaymentTotals.ts`
+- `src/services/paymentsService.ts`
+- `src/services/mercadoPagoService.ts`
+- `src/hooks/usePaymentStatus.ts`
+- `src/hooks/usePaymentTimeout.ts`
+- `src/components/order/PaymentMethodSelector.tsx`
+- `src/components/order/MercadoPagoBrick.tsx`
+- `src/components/order/CashPaymentWaiting.tsx`
+- `src/components/order/PaymentTimeout.tsx`
+- `src/components/kitchen/PendingCashPayments.tsx`
+- `src/pages/CheckoutPage.tsx`
+- `supabase/migrations/20260514000000_payments.sql`
+- `supabase/functions/mp-webhook/index.ts`
+- `supabase/functions/mp-webhook/README.md`
+- `supabase/functions/create-payment-preference/index.ts`
+
+**Archivos modificados relevantes:**
+- `package.json`, `src/vite-env.d.ts`, `src/App.tsx`, `src/components/order/OrderSheet.tsx`, `src/services/ordersService.ts`, `src/services/kitchenService.ts`, `src/pages/KitchenPage.tsx`, `src/components/kitchen/KitchenOrderCard.tsx`, `src/services/businessService.ts`, `src/components/business/OrdersTable.tsx`, `src/components/business/OrderRow.tsx`, `src/components/business/PaymentMethodChart.tsx`, `src/data/copy.ts`, `src/components/tracking/*`, `CLAUDE.md`.
+
+**TODOs Juan / pre-flight Turno 6:**
+- Crear/validar cuenta empresa MercadoPago y cuenta bancaria de retiro.
+- Configurar webhook en MercadoPago Dashboard apuntando a `https://<project-ref>.supabase.co/functions/v1/mp-webhook` para eventos `payment`.
+- Cargar Supabase secrets: `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MP_ENVIRONMENT`, `SITE_URL`.
+- Configurar `.env.local` / Vercel con `VITE_MP_PUBLIC_KEY` y `VITE_MP_ENVIRONMENT`.
+- Habilitar pg_cron en Supabase si se quiere auto-cancelación server-side programada; la función queda creada aunque el schedule falle.
+- Switchear credenciales sandbox por producción antes del lanzamiento.
+- Probar sandbox completo: pago aprobado, pago rechazado, webhook duplicado, firma inválida, efectivo, timeout 10 min y concurrencia.
+
+---
 
 ### 2026-05-12 — Fix responsive dashboard de negocio (post-deploy) ✅
 
@@ -655,4 +756,4 @@ Sugerencias técnicas: `mau.sawicki@gmail.com` (link en footer de la app).
 
 ---
 
-*Última actualización: 2026-05-13, fix responsive dashboard de negocio (post-deploy).*
+*Última actualización: 2026-05-14, Turno 6 cobro adelantado + MercadoPago.*

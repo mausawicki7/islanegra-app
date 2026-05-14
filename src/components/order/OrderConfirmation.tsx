@@ -43,11 +43,11 @@ export function OrderConfirmation({ order, onClose }: OrderConfirmationProps) {
         <dd className="text-right text-white">Recibido</dd>
         <dt className="text-left text-white/45">Pago</dt>
         <dd className="text-right text-white">
-          {order.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}
+          {order.paymentMethod === 'cash' ? 'Efectivo' : 'MercadoPago'}
         </dd>
         <dt className="text-left text-white/45">Total</dt>
         <dd className="text-right text-white tabular-nums">
-          {formatPrice(order.total)}
+          {formatPrice(order.totalAmount)}
         </dd>
       </dl>
 

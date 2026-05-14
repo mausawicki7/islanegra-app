@@ -1,8 +1,15 @@
 import type { ProductType } from './burger';
+import type {
+  LegacyPaymentMethod,
+  PaymentMethod,
+  PaymentStatus,
+  PaymentTotals,
+} from './payment';
 
-export type PaymentMethod = 'cash' | 'transfer';
+export type { PaymentMethod };
 
 export type OrderStatus =
+  | 'awaiting_payment'
   | 'new'
   | 'preparing'
   | 'ready'
@@ -26,8 +33,10 @@ export interface OrderItem extends OrderItemInput {
 export interface OrderInput {
   tableNumber: string;
   paymentMethod: PaymentMethod;
+  paymentStatus?: PaymentStatus;
   note: string | null;
   items: OrderItemInput[];
+  totals?: PaymentTotals;
 }
 
 export interface Order {
@@ -36,7 +45,13 @@ export interface Order {
   tableNumber: string;
   subtotal: number;
   total: number;
-  paymentMethod: PaymentMethod;
+  subtotalAmount: number;
+  discountAmount: number;
+  totalAmount: number;
+  paymentMethod: LegacyPaymentMethod | null;
+  paymentStatus: PaymentStatus;
+  paymentGatewayId: string | null;
+  paymentConfirmedAt: string | null;
   note: string | null;
   status: OrderStatus;
   createdAt: string;

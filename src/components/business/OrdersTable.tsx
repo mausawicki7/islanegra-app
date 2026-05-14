@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import type { BusinessOrder } from '@/services/businessService';
 import { filterOrders } from '@/services/businessService';
-import type { OrderStatus, PaymentMethod } from '@/types/order';
+import type { OrderStatus } from '@/types/order';
+import type { LegacyPaymentMethod } from '@/types/payment';
 import { OrderRow } from './OrderRow';
 import { ExportCSVButton } from './ExportCSVButton';
 
@@ -11,7 +12,7 @@ interface OrdersTableProps {
 }
 
 type StatusFilter = OrderStatus | 'all';
-type PaymentFilter = PaymentMethod | 'all';
+type PaymentFilter = LegacyPaymentMethod | 'all';
 
 const PAGE_SIZE = 25;
 
@@ -27,7 +28,8 @@ const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
 const PAYMENT_OPTIONS: { value: PaymentFilter; label: string }[] = [
   { value: 'all', label: 'Todos' },
   { value: 'cash', label: 'Efectivo' },
-  { value: 'transfer', label: 'Transferencia' },
+  { value: 'mercadopago', label: 'MercadoPago' },
+  { value: 'transfer', label: 'Transferencia legacy' },
 ];
 
 export function OrdersTable({ orders }: OrdersTableProps) {
