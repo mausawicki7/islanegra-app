@@ -25,7 +25,7 @@ const ADVANCE_LABELS: Record<OrderStatus, string> = {
   awaiting_payment: '',
   new: 'Empezar a preparar',
   preparing: 'Marcar listo',
-  ready: 'Entregar / Cobrar',
+  ready: 'Entregar',
   delivered: '',
   cancelled: '',
 };
