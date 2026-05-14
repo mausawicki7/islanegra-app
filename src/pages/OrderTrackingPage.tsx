@@ -120,7 +120,7 @@ export function OrderTrackingPage() {
         {order.status === 'delivered' && (
           <section className="rounded-lg border border-white/[0.08] bg-[#111111] p-5 text-center">
             <p className="text-sm leading-6 text-white/64">
-              Rating viene en la próxima versión. Por ahora, gracias por comer con nosotros.
+              Gracias por comer con nosotros.
             </p>
             <Link
               to={`/menu?mesa=${order.tableNumber}`}
