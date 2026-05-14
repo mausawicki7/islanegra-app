@@ -50,6 +50,30 @@
   }
 }
 
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-40px) rotate(0deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(280px) rotate(260deg);
+    opacity: 0;
+  }
+}
+
+.confetti-bit {
+  position: absolute;
+  top: -16px;
+  display: block;
+  width: 6px;
+  height: 12px;
+  background: #ffffff;
+  animation: confetti-fall 1.4s ease-out infinite;
+}
+
 /* Print styles for PDF export via window.print() ------------------------- */
 .printable {
   display: none;

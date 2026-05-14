@@ -418,6 +418,23 @@ Estas funcionalidades NO están en el plan y no se deben implementar sin discusi
 
 > Formato: orden cronológico inverso (más reciente arriba). Cada entrada indica fecha, turno y resumen de cambios.
 
+### 2026-05-12 — Fix responsive dashboard de negocio (post-deploy) ✅
+
+**Estado:** completado, build limpio, deployed. Commit `ee7019c`.
+
+**Contexto:** fix puntual sobre el dashboard de negocio detectado tras el deploy en producción, luego de la pasada responsive general.
+
+**Fixes:**
+- `KPICard`: valor `text-2xl` en mobile (era `text-3xl`), padding y gap reducidos, "vs ant." abreviado en mobile para evitar overflow.
+- `PeriodSelector`: botones más compactos (`h-8` / `px-2.5`), label del período oculto en mobile.
+- `RevenueChart` / `BurgerRankingChart`: altura `h-52` en mobile (era `h-64`).
+- `OperationalMetrics`: valores `text-xl` en mobile.
+- `HoursHeatmap`: `overflow-hidden` en el artículo contenedor para que el scroll horizontal del heatmap no rompa el layout de página.
+
+**Archivos modificados:** `KPICard.tsx`, `PeriodSelector.tsx`, `RevenueChart.tsx`, `BurgerRankingChart.tsx`, `OperationalMetrics.tsx`, `HoursHeatmap.tsx`, `BusinessSummaryPage.tsx`.
+
+---
+
 ### 2026-05-12 — Pasada responsive en todas las interfaces ✅
 
 **Estado:** completado, build limpio, deployed. Commit `9be6b19`.
@@ -638,4 +655,4 @@ Sugerencias técnicas: `mau.sawicki@gmail.com` (link en footer de la app).
 
 ---
 
-*Última actualización: 2026-05-12, post-deploy + pasada responsive.*
+*Última actualización: 2026-05-13, fix responsive dashboard de negocio (post-deploy).*

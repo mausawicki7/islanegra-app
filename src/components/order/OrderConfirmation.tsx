@@ -1,4 +1,7 @@
 import { Check } from 'lucide-react';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { TRACKING_STORAGE_KEY } from '@/data/copy';
 import type { Order } from '@/types/order';
 import { formatPrice } from '@/utils/formatPrice';
 
@@ -8,6 +11,16 @@ interface OrderConfirmationProps {
 }
 
 export function OrderConfirmation({ order, onClose }: OrderConfirmationProps) {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    localStorage.setItem(TRACKING_STORAGE_KEY, order.id);
+    const timer = window.setTimeout(() => {
+      navigate(`/pedido/${order.id}`);
+    }, 2_000);
+    return () => window.clearTimeout(timer);
+  }, [navigate, order.id]);
+
   return (
     <div className="flex flex-col items-center px-6 py-10 text-center">
       <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-white/5">
@@ -40,10 +53,13 @@ export function OrderConfirmation({ order, onClose }: OrderConfirmationProps) {
 
       <button
         type="button"
-        onClick={onClose}
+        onClick={() => {
+          onClose();
+          navigate(`/pedido/${order.id}`);
+        }}
         className="mt-10 inline-flex h-12 items-center justify-center rounded-full bg-white px-8 text-sm font-semibold uppercase tracking-[0.2em] text-black transition hover:bg-white/90"
       >
-        Listo
+        Ver seguimiento
       </button>
     </div>
   );

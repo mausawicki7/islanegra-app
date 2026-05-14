@@ -1,5 +1,55 @@
 import { supabase } from './supabaseClient';
 import type { Order, OrderInput } from '@/types/order';
+import type { RealtimeChannel } from '@supabase/supabase-js';
+import type { OrderStatus } from '@/types/order';
+
+interface OrderRow {
+  id: string;
+  order_number: string;
+  table_number: string;
+  subtotal: number | string;
+  total: number | string;
+  payment_method: 'cash' | 'transfer';
+  note: string | null;
+  status: OrderStatus;
+  created_at: string;
+  order_items?: OrderItemRow[];
+}
+
+interface OrderItemRow {
+  id: string;
+  order_id: string;
+  product_id: string;
+  product_name: string;
+  product_type: 'burger' | 'drink' | 'side';
+  quantity: number;
+  unit_price: number | string;
+  subtotal: number | string;
+}
+
+function mapOrder(row: OrderRow): Order {
+  return {
+    id: row.id,
+    orderNumber: row.order_number,
+    tableNumber: row.table_number,
+    subtotal: Number(row.subtotal),
+    total: Number(row.total),
+    paymentMethod: row.payment_method,
+    note: row.note,
+    status: row.status,
+    createdAt: row.created_at,
+    items: (row.order_items ?? []).map((it) => ({
+      id: it.id,
+      orderId: it.order_id,
+      productId: it.product_id,
+      productName: it.product_name,
+      productType: it.product_type,
+      quantity: it.quantity,
+      unitPrice: Number(it.unit_price),
+      subtotal: Number(it.subtotal),
+    })),
+  };
+}
 
 function generateOrderNumber(): string {
   const now = new Date();
@@ -56,25 +106,49 @@ export async function createOrder(input: OrderInput): Promise<Order> {
     throw new Error(itemsErr.message);
   }
 
-  return {
-    id: orderRow.id,
-    orderNumber: orderRow.order_number,
-    tableNumber: orderRow.table_number,
-    subtotal: Number(orderRow.subtotal),
-    total: Number(orderRow.total),
-    paymentMethod: orderRow.payment_method,
-    note: orderRow.note,
-    status: orderRow.status,
-    createdAt: orderRow.created_at,
-    items: (insertedItems ?? []).map((row) => ({
-      id: row.id,
-      orderId: row.order_id,
-      productId: row.product_id,
-      productName: row.product_name,
-      productType: row.product_type,
-      quantity: row.quantity,
-      unitPrice: Number(row.unit_price),
-      subtotal: Number(row.subtotal),
-    })),
+  return mapOrder({ ...orderRow, order_items: insertedItems ?? [] } as OrderRow);
+}
+
+export async function fetchOrderById(orderId: string): Promise<Order | null> {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*, order_items(*)')
+    .eq('id', orderId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return data ? mapOrder(data as OrderRow) : null;
+}
+
+export function subscribeToOrder(
+  orderId: string,
+  onChange: () => void,
+  onStatus?: (status: 'connected' | 'reconnecting') => void,
+): () => void {
+  let channel: RealtimeChannel | null = supabase.channel(`order-${orderId}`);
+  channel
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'orders',
+        filter: `id=eq.${orderId}`,
+      },
+      () => onChange(),
+    )
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        onStatus?.('connected');
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        onStatus?.('reconnecting');
+      }
+    });
+
+  return () => {
+    if (channel) {
+      void supabase.removeChannel(channel);
+      channel = null;
+    }
   };
 }
