@@ -26,7 +26,7 @@ export function StatusMessage({ status }: StatusMessageProps) {
       <h1 className="mt-3 text-balance text-3xl font-semibold uppercase leading-[0.95] tracking-tightest text-white sm:text-5xl">
         {STATUS_PRIMARY_COPY[status]}
       </h1>
-      <p className="mt-4 min-h-12 text-base leading-7 text-white/64 sm:text-lg">
+      <p key={copyIndex} className="animate-phrase-in mt-4 min-h-12 text-base leading-7 text-white/64 sm:text-lg">
         {secondary[copyIndex]}
       </p>
     </section>

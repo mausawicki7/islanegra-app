@@ -215,6 +215,17 @@ export function GameCanvas({
     return () => window.removeEventListener('keydown', onKey);
   }, [flap]);
 
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const onTouch = (e: TouchEvent) => {
+      e.preventDefault();
+      flap();
+    };
+    canvas.addEventListener('touchstart', onTouch, { passive: false });
+    return () => canvas.removeEventListener('touchstart', onTouch);
+  }, [flap]);
+
   return (
     <canvas
       ref={canvasRef}
