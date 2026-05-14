@@ -3,7 +3,6 @@ import { LogOut } from 'lucide-react';
 import { Footer } from '@/components/layout/Footer';
 import { KitchenAuth } from '@/components/kitchen/KitchenAuth';
 import { KitchenGrid } from '@/components/kitchen/KitchenGrid';
-import { PendingCashPayments } from '@/components/kitchen/PendingCashPayments';
 import logo from '@/assets/logo.svg';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import {
@@ -115,10 +114,6 @@ export function KitchenPage() {
             {actionError}
           </p>
         )}
-        <PendingCashPayments
-          onConfirmed={refresh}
-          onError={setActionError}
-        />
         {loading ? (
           <p className="text-sm text-white/45">Cargando pedidos…</p>
         ) : (

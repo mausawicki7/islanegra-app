@@ -91,10 +91,10 @@ src/
     order/         OrderSheet, QuantitySelector, PaymentSelector, OrderConfirmation,
                    PaymentMethodSelector, MercadoPagoBrick, CashPaymentWaiting,
                    PaymentTimeout
-    kitchen/       KitchenAuth, KitchenOrderCard, KitchenGrid, PendingCashPayments
+    kitchen/       KitchenAuth, KitchenOrderCard, KitchenGrid
     salon/         StaffIdentificationModal, SalonHeader, SalonNav,
                    ClaimableTaskCard, ReadyOrdersSection,
-                   PendingPaymentsSection, CocktailValidationSection (funcional)
+                   PendingPaymentsSection (funcional), CocktailValidationSection (funcional)
     business/      BusinessAuth, BusinessLayout, PeriodSelector, KPICard,
                    RevenueChart, BurgerRankingChart, PaymentMethodChart,
                    HoursHeatmap, OperationalMetrics, OrdersTable, OrderRow,
@@ -357,9 +357,9 @@ Scores del mini-juego Flappy Burger y registro de premios ganados. **Una sola ta
 
 1. Staff abre `/cocina` en monitor o tablet fijo.
 2. Ingresa PIN (`VITE_KITCHEN_PIN`, actualmente `1234`). Se guarda en sessionStorage.
-3. Ve panel de cobranzas pendientes en efectivo arriba y lista de pedidos activos pagados (`new` / `preparing` / `ready`) abajo.
+3. Ve la lista de pedidos activos pagados (`new` / `preparing` / `ready`).
 4. Suscripción Supabase Realtime: nuevos pedidos pagados aparecen automáticamente sin recargar.
-5. Cuando entra un pedido pagado o una nueva cobranza en efectivo pendiente, suena un chime (Web Audio API, 880→1320 Hz, sin assets externos).
+5. Cuando entra un pedido pagado, suena un chime (Web Audio API, 880→1320 Hz, sin assets externos).
 6. Cada card muestra: número grande, mesa enorme, items con cantidad, nota si existe, método de pago, tiempo transcurrido ("hace 3 min").
 7. Borde de color según estado: ámbar si `preparing`, verde si `ready`. Si pasa más de 8 min en `new`, escalado a rojo.
 8. Tap en botón principal avanza estado: `new` → `preparing` → `ready` → `delivered`.
@@ -377,7 +377,7 @@ Scores del mini-juego Flappy Burger y registro de premios ganados. **Una sola ta
 6. Botón `Voy yo` setea `claimed_by`/`claimed_at`. Es señalización social solamente: otra moza puede marcar `Entregado` si hace falta.
 7. `Entregado` cambia `status = 'delivered'`, limpia claim y el pedido desaparece de la lista.
 8. Al volver la pestaña a visible (`visibilitychange`), la vista re-fetchea todo y re-suscribe realtime. Un pedido nuevo en `ready` dispara vibración háptica.
-9. **Cobros** queda como contenedor vacío con "Nada pendiente por ahora" para Turno 6.
+9. **Cobros** muestra pedidos en efectivo con `status = 'awaiting_payment'` y `payment_status = 'unpaid'`, ordenados por antigüedad. Cada card muestra mesa, monto con descuento, items, tiempo transcurrido y claim social por moza. `Voy yo` toma el cobro, el botón de soltar libera el claim y `Cobrado` confirma el efectivo con `confirmCashPayment(order, staffName)`, haciendo que el pedido entre a cocina y desaparezca de la lista. Un cobro nuevo dispara vibración háptica y el badge del tab se actualiza en vivo.
 10. **Cócteles** valida premios ganados en Flappy Burger: lista códigos pendientes, permite claim social por moza, soltar claim, canjear desde la lista y validar manualmente por código. Al canjear, se registra `redeemed_by` con el nombre local del staff y el premio desaparece.
 
 ### Flujo negocio
@@ -525,6 +525,18 @@ Estas funcionalidades NO están en el plan y no se deben implementar sin discusi
 ## 11. CHANGELOG
 
 > Formato: orden cronológico inverso (más reciente arriba). Cada entrada indica fecha, turno y resumen de cambios.
+
+### 2026-05-14 — Turno 6 delta: cobros en efectivo pasan a Salón ✅
+
+**Estado:** completado en código. Build pendiente.
+
+**Implementado:** PendingPaymentsSection en /salon ahora funcional: fetch inicial, realtime, claim (Voy yo / soltar), confirmación de cobro con confirmCashPayment(order, staffName). Vibración háptica en nuevo cobro. Badge del tab 'Cobros' en vivo. PendingCashPayments en /cocina eliminado.
+
+**Archivos modificados:** src/components/salon/PendingPaymentsSection.tsx, src/pages/SalonPage.tsx, src/pages/KitchenPage.tsx
+
+**Archivos eliminados:** src/components/kitchen/PendingCashPayments.tsx
+
+---
 
 ### 2026-05-14 — Turno 5 fix: pausa de game loop + limpieza ✅
 
@@ -902,4 +914,4 @@ Sugerencias técnicas: `mau.sawicki@gmail.com` (link en footer de la app).
 
 ---
 
-*Última actualización: 2026-05-14, Turno 5 delta cocktails en Salón.*
+*Última actualización: 2026-05-14, Turno 6 delta cobros en Salón.*

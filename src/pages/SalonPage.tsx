@@ -12,6 +12,7 @@ import { isSupabaseConfigured } from '@/services/supabaseClient';
 
 export function SalonPage() {
   const [activeTab, setActiveTab] = useState<SalonTab>('ready');
+  const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
   const { identity, saveIdentity, clearIdentity } = useStaffIdentity();
   const { readyOrders, loading, error, connection, refresh } = useSalonRealtime();
 
@@ -19,7 +20,7 @@ export function SalonPage() {
 
   const counts: Record<SalonTab, number> = {
     ready: readyOrders.length,
-    payments: 0,
+    payments: pendingPaymentsCount,
     cocktails: 0,
   };
 
@@ -63,7 +64,12 @@ export function SalonPage() {
             onSettled={refresh}
           />
         )}
-        {activeTab === 'payments' && <PendingPaymentsSection />}
+        <div className={activeTab === 'payments' ? '' : 'hidden'}>
+          <PendingPaymentsSection
+            staffName={staffName}
+            onCountChange={setPendingPaymentsCount}
+          />
+        </div>
         {activeTab === 'cocktails' && (
           <CocktailValidationSection staffName={staffName} />
         )}
