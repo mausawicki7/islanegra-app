@@ -69,3 +69,4 @@ memory/
 *.local
 tmp/
 temp/
+.vercel
