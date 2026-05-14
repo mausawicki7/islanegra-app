@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGameLoop } from './useGameLoop';
 
+function loadImage(src: string): HTMLImageElement {
+  const img = new Image();
+  img.src = src;
+  return img;
+}
+
 interface GameCanvasProps {
   weeklyHighScore: number;
   allTimeHighScore: number;
@@ -25,6 +31,9 @@ export function GameCanvas({
   onGameOver,
 }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const imgNormal = useRef<HTMLImageElement>(loadImage('/burger-normal.webp'));
+  const imgSquish = useRef<HTMLImageElement>(loadImage('/burger-squish.webp'));
+  const squishUntilRef = useRef<number>(0);
   const stateRef = useRef({
     y: HEIGHT * 0.45,
     vy: 0,
@@ -35,105 +44,22 @@ export function GameCanvas({
   const [running, setRunning] = useState(false);
 
   const drawBurger = (ctx: CanvasRenderingContext2D, x: number, y: number) => {
-    ctx.save();
-    ctx.translate(x, y);
-
-    // Pan superior negro (carbón) con domo
-    const topBun = new Path2D();
-    topBun.moveTo(-18, -6);
-    topBun.bezierCurveTo(-18, -22, 18, -22, 18, -6);
-    topBun.lineTo(18, -4);
-    topBun.lineTo(-18, -4);
-    topBun.closePath();
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fill(topBun);
-    // brillo sutil en el pan superior
-    const bunGrad = ctx.createRadialGradient(-4, -16, 1, 0, -13, 18);
-    bunGrad.addColorStop(0, 'rgba(255,255,255,0.13)');
-    bunGrad.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = bunGrad;
-    ctx.fill(topBun);
-    // semillas de sésamo
-    ctx.fillStyle = '#e8d8a0';
-    const seeds = [[-7, -15], [3, -18], [10, -13], [-2, -11]];
-    for (const [sx, sy] of seeds) {
+    const isSquished = performance.now() < squishUntilRef.current;
+    const img = isSquished ? imgSquish.current : imgNormal.current;
+    const displaySize = BURGER_SIZE * 2.2;
+    const half = displaySize / 2;
+    if (img.complete && img.naturalWidth > 0) {
+      ctx.drawImage(img, x - half, y - half, displaySize, displaySize);
+    } else {
+      // fallback geométrico mientras cargan
       ctx.save();
-      ctx.translate(sx, sy);
-      ctx.rotate(0.5);
+      ctx.translate(x, y);
+      ctx.fillStyle = '#1a1a1a';
       ctx.beginPath();
-      ctx.ellipse(0, 0, 2.2, 1.2, 0, 0, Math.PI * 2);
+      ctx.roundRect(-17, -14, 34, 28, 8);
       ctx.fill();
       ctx.restore();
     }
-
-    // Lechuga (ondas verdes)
-    ctx.fillStyle = '#3a7d44';
-    ctx.beginPath();
-    for (let lx = -20; lx <= 20; lx += 8) {
-      ctx.arc(lx, -3, 5, Math.PI, 0);
-    }
-    ctx.lineTo(20, 0);
-    ctx.lineTo(-20, 0);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#4a9e55';
-    ctx.beginPath();
-    for (let lx = -16; lx <= 16; lx += 8) {
-      ctx.arc(lx, -3, 4, Math.PI, 0);
-    }
-    ctx.fill();
-
-    // Cheddar derretido (gotea por los costados)
-    ctx.fillStyle = '#f5a623';
-    ctx.beginPath();
-    ctx.roundRect(-19, 1, 38, 5, 1);
-    ctx.fill();
-    // goteos laterales
-    ctx.beginPath();
-    ctx.moveTo(-17, 6); ctx.lineTo(-14, 6); ctx.lineTo(-15, 10); ctx.lineTo(-16, 10); ctx.closePath();
-    ctx.moveTo(14, 6); ctx.lineTo(17, 6); ctx.lineTo(16, 10); ctx.lineTo(15, 10); ctx.closePath();
-    ctx.fill();
-
-    // Carne smashed (irregular, textura oscura)
-    ctx.fillStyle = '#4a2018';
-    ctx.beginPath();
-    ctx.moveTo(-20, 7);
-    ctx.lineTo(-21, 8); ctx.lineTo(-19, 9); ctx.lineTo(-20, 11);
-    ctx.lineTo(20, 11); ctx.lineTo(21, 9); ctx.lineTo(19, 8); ctx.lineTo(20, 7);
-    ctx.closePath();
-    ctx.fill();
-    // tono crujiente en el borde smashed
-    ctx.fillStyle = '#2e1208';
-    ctx.beginPath();
-    ctx.moveTo(-20, 7); ctx.lineTo(20, 7); ctx.lineTo(20, 8.5); ctx.lineTo(-20, 8.5);
-    ctx.closePath();
-    ctx.fill();
-    // veteado de la carne
-    ctx.strokeStyle = 'rgba(90,35,15,0.5)';
-    ctx.lineWidth = 0.8;
-    for (let vx = -12; vx <= 12; vx += 7) {
-      ctx.beginPath();
-      ctx.moveTo(vx, 8); ctx.lineTo(vx + 2, 11);
-      ctx.stroke();
-    }
-
-    // Salsa (manchas blancas)
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.beginPath(); ctx.ellipse(-8, 9, 3, 1.2, -0.3, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(7, 10, 2.5, 1, 0.4, 0, Math.PI * 2); ctx.fill();
-
-    // Pan inferior negro (base plana)
-    ctx.fillStyle = '#1a1a1a';
-    ctx.beginPath();
-    ctx.roundRect(-18, 12, 36, 9, [0, 0, 7, 7]);
-    ctx.fill();
-    // línea de tostado
-    ctx.fillStyle = '#2d2d2d';
-    ctx.beginPath();
-    ctx.roundRect(-17, 12, 34, 2, 1);
-    ctx.fill();
-
-    ctx.restore();
   };
 
   const drawPipe = (ctx: CanvasRenderingContext2D, pipe: Pipe, width: number) => {
@@ -204,6 +130,7 @@ export function GameCanvas({
   const flap = useCallback(() => {
     if (!running) setRunning(true);
     stateRef.current.vy = -0.38;
+    squishUntilRef.current = performance.now() + 180;
   }, [running]);
 
   const frame = useCallback(
