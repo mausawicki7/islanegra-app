@@ -11,6 +11,8 @@ export interface CocktailReward {
   wonAt: string;
   redeemedAt: string | null;
   redeemedBy: string | null;
+  claimedBy: string | null;
+  claimedAt: string | null;
 }
 
 interface RewardRow {
@@ -22,6 +24,8 @@ interface RewardRow {
   redemption_code: string;
   redeemed_at: string | null;
   redeemed_by: string | null;
+  claimed_by: string | null;
+  claimed_at: string | null;
 }
 
 function mapReward(row: RewardRow): CocktailReward {
@@ -34,8 +38,13 @@ function mapReward(row: RewardRow): CocktailReward {
     wonAt: row.played_at,
     redeemedAt: row.redeemed_at,
     redeemedBy: row.redeemed_by,
+    claimedBy: row.claimed_by,
+    claimedAt: row.claimed_at,
   };
 }
+
+const rewardSelect =
+  'id, order_id, table_number, score, played_at, redemption_code, redeemed_at, redeemed_by, claimed_by, claimed_at';
 
 export async function createRewardScore(input: {
   orderId: string;
@@ -60,6 +69,8 @@ export async function createRewardScore(input: {
         wonAt: score.playedAt,
         redeemedAt: score.redeemedAt,
         redeemedBy: null,
+        claimedBy: null,
+        claimedAt: null,
       };
     } catch (err) {
       lastError = err;
@@ -74,7 +85,7 @@ export async function createRewardScore(input: {
 export async function fetchRewardForOrder(orderId: string): Promise<CocktailReward | null> {
   const { data, error } = await supabase
     .from('game_scores')
-    .select('id, order_id, table_number, score, played_at, redemption_code, redeemed_at, redeemed_by')
+    .select(rewardSelect)
     .eq('order_id', orderId)
     .not('redemption_code', 'is', null)
     .order('played_at', { ascending: false })
@@ -88,7 +99,7 @@ export async function fetchRewardForOrder(orderId: string): Promise<CocktailRewa
 export async function fetchPendingRewards(): Promise<CocktailReward[]> {
   const { data, error } = await supabase
     .from('game_scores')
-    .select('id, order_id, table_number, score, played_at, redemption_code, redeemed_at, redeemed_by')
+    .select(rewardSelect)
     .not('redemption_code', 'is', null)
     .is('redeemed_at', null)
     .order('played_at', { ascending: false });
@@ -100,12 +111,39 @@ export async function fetchPendingRewards(): Promise<CocktailReward[]> {
 export async function findRewardByCode(code: string): Promise<CocktailReward | null> {
   const { data, error } = await supabase
     .from('game_scores')
-    .select('id, order_id, table_number, score, played_at, redemption_code, redeemed_at, redeemed_by')
+    .select(rewardSelect)
     .eq('redemption_code', code.trim().toUpperCase())
     .maybeSingle();
 
   if (error) throw new Error(error.message);
   return data ? mapReward(data as RewardRow) : null;
+}
+
+export async function claimReward(id: string, claimedBy: string | null): Promise<void> {
+  const name = claimedBy?.trim() || null;
+  const { error } = await supabase
+    .from('game_scores')
+    .update({
+      claimed_by: name,
+      claimed_at: name ? new Date().toISOString() : null,
+    })
+    .eq('id', id)
+    .is('redeemed_at', null);
+
+  if (error) throw new Error(error.message);
+}
+
+export async function releaseRewardClaim(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('game_scores')
+    .update({
+      claimed_by: null,
+      claimed_at: null,
+    })
+    .eq('id', id)
+    .is('redeemed_at', null);
+
+  if (error) throw new Error(error.message);
 }
 
 export async function redeemReward(id: string, redeemedBy?: string): Promise<void> {

@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 import { LogOut } from 'lucide-react';
 import { Footer } from '@/components/layout/Footer';
-import { CocktailRewardsPanel } from '@/components/kitchen/CocktailRewardsPanel';
 import { KitchenAuth } from '@/components/kitchen/KitchenAuth';
 import { KitchenGrid } from '@/components/kitchen/KitchenGrid';
 import { PendingCashPayments } from '@/components/kitchen/PendingCashPayments';
@@ -116,7 +115,6 @@ export function KitchenPage() {
             {actionError}
           </p>
         )}
-        <CocktailRewardsPanel onError={setActionError} />
         <PendingCashPayments
           onConfirmed={refresh}
           onError={setActionError}

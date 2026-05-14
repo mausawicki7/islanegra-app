@@ -64,7 +64,9 @@ export function SalonPage() {
           />
         )}
         {activeTab === 'payments' && <PendingPaymentsSection />}
-        {activeTab === 'cocktails' && <CocktailValidationSection />}
+        {activeTab === 'cocktails' && (
+          <CocktailValidationSection staffName={staffName} />
+        )}
       </main>
 
       <StaffIdentificationModal open={!identity} onSave={saveIdentity} />

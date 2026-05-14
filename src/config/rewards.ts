@@ -1,1 +1,1 @@
-export const COCKTAIL_PREMIO_NOMBRE = 'Spritz de la casa';
+export const REWARD_NAME = 'un trago de la casa';

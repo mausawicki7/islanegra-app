@@ -1,4 +1,4 @@
-import { COCKTAIL_PREMIO_NOMBRE } from '@/config/rewards';
+import { REWARD_NAME } from '@/config/rewards';
 import type { OrderStatus } from '@/types/order';
 
 export const TRACKING_STORAGE_KEY = 'islanegra:last_order';
@@ -53,11 +53,11 @@ export const STATUS_SECONDARY_COPY: Record<OrderStatus, string[]> = {
 };
 
 export const GAME_COPY = {
-  invitation: `¿Aburrido? Jugá Flappy Burger. Si rompés el récord de la semana, te llevás un ${COCKTAIL_PREMIO_NOMBRE} de regalo.`,
+  invitation: `¿Aburrido? Jugá Flappy Burger. Si rompés el récord de la semana, te llevás ${REWARD_NAME} de regalo.`,
   gameOverBehind: (points: number) =>
     `Game over. Quedaste a ${points} ${points === 1 ? 'punto' : 'puntos'} del récord. ¿Otra?`,
-  gameOverWinning: `Rompiste el récord. Te ganaste un ${COCKTAIL_PREMIO_NOMBRE}.`,
+  gameOverWinning: `Rompiste el récord. Te ganaste ${REWARD_NAME}.`,
   alreadyRedeemed:
     'Buen score, pero tu mesa ya se llevó el cocktail esta noche. Volvé mañana.',
-  redeemInstructions: `Mostrale este código a tu moza para canjear tu ${COCKTAIL_PREMIO_NOMBRE}.`,
+  redeemInstructions: `Mostrale este código a tu moza para canjear ${REWARD_NAME}.`,
 };

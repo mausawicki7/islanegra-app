@@ -94,7 +94,7 @@ src/
     kitchen/       KitchenAuth, KitchenOrderCard, KitchenGrid, PendingCashPayments
     salon/         StaffIdentificationModal, SalonHeader, SalonNav,
                    ClaimableTaskCard, ReadyOrdersSection,
-                   PendingPaymentsSection, CocktailValidationSection
+                   PendingPaymentsSection, CocktailValidationSection (funcional)
     business/      BusinessAuth, BusinessLayout, PeriodSelector, KPICard,
                    RevenueChart, BurgerRankingChart, PaymentMethodChart,
                    HoursHeatmap, OperationalMetrics, OrdersTable, OrderRow,
@@ -355,7 +355,8 @@ Auditoría de intentos y confirmaciones de pago.
 6. Botón `Voy yo` setea `claimed_by`/`claimed_at`. Es señalización social solamente: otra moza puede marcar `Entregado` si hace falta.
 7. `Entregado` cambia `status = 'delivered'`, limpia claim y el pedido desaparece de la lista.
 8. Al volver la pestaña a visible (`visibilitychange`), la vista re-fetchea todo y re-suscribe realtime. Un pedido nuevo en `ready` dispara vibración háptica.
-9. **Cobros** y **Cócteles** quedan como contenedores vacíos con "Nada pendiente por ahora" para Turnos 6 y 5.
+9. **Cobros** queda como contenedor vacío con "Nada pendiente por ahora" para Turno 6.
+10. **Cócteles** valida premios ganados en Flappy Burger: lista códigos pendientes, permite claim social por moza, soltar claim, canjear desde la lista y validar manualmente por código. Al canjear, se registra `redeemed_by` con el nombre local del staff y el premio desaparece.
 
 ### Flujo negocio
 
@@ -502,6 +503,36 @@ Estas funcionalidades NO están en el plan y no se deben implementar sin discusi
 ## 11. CHANGELOG
 
 > Formato: orden cronológico inverso (más reciente arriba). Cada entrada indica fecha, turno y resumen de cambios.
+
+### 2026-05-14 — Turno 5 delta: cocktails pasan a Salón ✅
+
+**Estado:** completado en código. Build y `tsc --noEmit` no ejecutados por restricción explícita del turno.
+
+**Implementado:**
+- Migración `supabase/migrations/20260513000001_engagement_claim.sql` agrega `claimed_by` / `claimed_at` a `game_scores` y reemplaza la policy de redeem por una policy de claim/canje para premios de las últimas 24h.
+- `CocktailValidationSection` dejó de ser placeholder y ahora funciona en `/salon`: fetch inicial, realtime de `game_scores`, orden por hora ganada descendente, claim social (`Voy yo`), soltar claim, canje desde lista y validación manual por código.
+- El canje registra el nombre local del staff (`redeemed_by`) y muestra "Decile al cliente que pase por la barra." antes de que el ítem desaparezca por refresh/realtime.
+- `/cocina` ya no renderiza ni importa `CocktailRewardsPanel`; la validación de cocktails queda en salón.
+- Copy/config de rewards se unificó en `REWARD_NAME = 'un trago de la casa'`.
+
+**Archivos modificados:**
+- `src/config/rewards.ts`
+- `src/data/copy.ts`
+- `src/services/rewardsService.ts`
+- `src/components/salon/CocktailValidationSection.tsx`
+- `src/pages/SalonPage.tsx`
+- `src/pages/KitchenPage.tsx`
+- `CLAUDE.md`
+
+**Archivos nuevos/eliminados:**
+- Nuevo: `supabase/migrations/20260513000001_engagement_claim.sql`
+- Eliminado: `src/components/kitchen/CocktailRewardsPanel.tsx`
+
+**Observaciones:**
+- No se modificó la migración ya aplicada `20260513000000_engagement.sql`.
+- Falta aplicar la migración nueva en Supabase dev/prod y probar el flujo en celular desde `/salon`.
+
+---
 
 ### 2026-05-14 — Turno 4b: interfaz Salón ✅
 
@@ -828,4 +859,4 @@ Sugerencias técnicas: `mau.sawicki@gmail.com` (link en footer de la app).
 
 ---
 
-*Última actualización: 2026-05-14, Turno 4b interfaz Salón.*
+*Última actualización: 2026-05-14, Turno 5 delta cocktails en Salón.*
