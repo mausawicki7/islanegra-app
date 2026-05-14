@@ -59,6 +59,8 @@ set
 where payment_status = 'unpaid'
   and status <> 'awaiting_payment';
 
+drop function if exists public.month_gross_revenue(date);
+
 create or replace function public.month_gross_revenue(target_month date)
 returns numeric
 language sql
