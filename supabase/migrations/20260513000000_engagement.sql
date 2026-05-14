@@ -13,6 +13,7 @@ create table if not exists public.game_scores (
   redemption_code  text unique,
   redeemed_at      timestamptz,
   redeemed_by      text,
+  player_name      text,
   constraint game_scores_redemption_code_format
     check (
       redemption_code is null

@@ -16,6 +16,7 @@ export interface LeaderboardEntry {
   tableNumber: number;
   score: number;
   playedAt: string;
+  playerName: string | null;
 }
 
 interface GameScoreRow {
@@ -45,7 +46,7 @@ function mapScore(row: GameScoreRow): GameScore {
 export async function fetchWeeklyLeaderboard(limit = 5): Promise<LeaderboardEntry[]> {
   const { data, error } = await supabase
     .from('game_scores')
-    .select('table_number, score, played_at')
+    .select('table_number, score, played_at, player_name')
     .eq('week_start', getWeekStart())
     .order('score', { ascending: false })
     .order('played_at', { ascending: true })
@@ -56,7 +57,16 @@ export async function fetchWeeklyLeaderboard(limit = 5): Promise<LeaderboardEntr
     tableNumber: Number(row.table_number),
     score: Number(row.score),
     playedAt: row.played_at,
+    playerName: (row.player_name as string | null) ?? null,
   }));
+}
+
+export async function updatePlayerName(id: string, playerName: string): Promise<void> {
+  const { error } = await supabase
+    .from('game_scores')
+    .update({ player_name: playerName.trim() })
+    .eq('id', id);
+  if (error) throw new Error(error.message);
 }
 
 export async function fetchWeeklyHighScore(): Promise<number> {

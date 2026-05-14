@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { GAME_COPY } from '@/data/copy';
 import { useWeeklyHighScore } from '@/hooks/useWeeklyHighScore';
-import { insertGameScore } from '@/services/gameScoresService';
+import { insertGameScore, updatePlayerName } from '@/services/gameScoresService';
 import { createRewardScore } from '@/services/rewardsService';
 import { GameCanvas } from './GameCanvas';
 import { GameOverScreen } from './GameOverScreen';
@@ -26,6 +26,7 @@ export function FlappyBurger({ orderId, tableNumber, onReward }: FlappyBurgerPro
   const [gameOver, setGameOver] = useState(false);
   const [lastScore, setLastScore] = useState(0);
   const [rewardCode, setRewardCode] = useState<string | null>(null);
+  const [rewardScoreId, setRewardScoreId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [hidden, setHidden] = useState(false);
 
@@ -33,6 +34,7 @@ export function FlappyBurger({ orderId, tableNumber, onReward }: FlappyBurgerPro
     setLastScore(score);
     setGameOver(true);
     setRewardCode(null);
+    setRewardScoreId(null);
     setMessage(null);
 
     const brokeRecord = score > weeklyHighScore && score > 0;
@@ -41,6 +43,7 @@ export function FlappyBurger({ orderId, tableNumber, onReward }: FlappyBurgerPro
         try {
           const reward = await createRewardScore({ orderId, tableNumber, score });
           setRewardCode(reward.redemptionCode);
+          setRewardScoreId(reward.id);
           onReward(reward.redemptionCode);
           setMessage(GAME_COPY.gameOverWinning);
         } catch (err) {
@@ -85,6 +88,11 @@ export function FlappyBurger({ orderId, tableNumber, onReward }: FlappyBurgerPro
             weeklyHighScore={weeklyHighScore}
             rewardCode={rewardCode}
             message={message}
+            onNameSubmit={
+              rewardScoreId
+                ? async (name: string) => { await updatePlayerName(rewardScoreId, name); await refresh(); }
+                : undefined
+            }
             onRetry={() => {
               setGameOver(false);
               setResetToken((value) => value + 1);

@@ -28,7 +28,7 @@ export function WeeklyLeaderboard({ entries, loading }: WeeklyLeaderboardProps) 
               className="flex items-center justify-between gap-3 text-sm"
             >
               <span className="text-white/64">
-                #{index + 1} · Mesa {entry.tableNumber}
+                #{index + 1} · {entry.playerName ?? `Mesa ${entry.tableNumber}`}
               </span>
               <span className="font-semibold tabular-nums text-white">{entry.score}</span>
             </li>
