@@ -37,7 +37,7 @@ export function GameOverScreen({
   };
 
   return (
-    <div className="absolute inset-x-4 top-1/2 z-10 -translate-y-1/2 rounded-lg border border-white/[0.08] bg-[#111111]/95 p-5 text-center backdrop-blur">
+    <div className="absolute inset-x-4 top-2 bottom-2 z-10 overflow-y-auto rounded-lg border border-white/[0.08] bg-[#111111]/95 p-5 text-center backdrop-blur">
       {rewardCode && (
         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg">
           {Array.from({ length: 16 }, (_, index) => (
