@@ -90,7 +90,8 @@ src/
     menu/          MenuHero, BurgerGrid, BurgerCard, BurgerDetail, BurgerImage
     order/         OrderSheet, QuantitySelector, PaymentSelector, OrderConfirmation,
                    PaymentMethodSelector, MercadoPagoBrick, CashPaymentWaiting,
-                   PaymentTimeout
+                   PaymentTimeout, UniversalExtras, SpecificExtras,
+                   RemovableIngredients, ItemNote
     kitchen/       KitchenAuth, KitchenOrderCard, KitchenGrid
     salon/         StaffIdentificationModal, SalonHeader, SalonNav,
                    ClaimableTaskCard, ReadyOrdersSection,
@@ -106,20 +107,22 @@ src/
   services/        supabaseClient.ts, ordersService.ts, kitchenService.ts,
                    authService.ts, businessService.ts,
                    partnersService.ts, settlementsService.ts, salonService.ts,
-                   paymentsService.ts, mercadoPagoService.ts
+                   paymentsService.ts, mercadoPagoService.ts, extrasService.ts
   hooks/           useTable, useActiveOrders, useKitchenAuth,
                    useAuth, useBusinessMetrics, usePeriod,
                    usePartners, useSettlements, usePageTitle,
                    usePaymentStatus, usePaymentTimeout,
-                   useStaffIdentity, useClaimableTask, useSalonRealtime
-  types/           burger.ts, order.ts, settlement.ts, payment.ts, salon.ts
+                   useStaffIdentity, useClaimableTask, useSalonRealtime,
+                   useItemCustomization
+  types/           burger.ts, order.ts, settlement.ts, payment.ts, salon.ts,
+                   customization.ts
   pages/           MenuPage, BurgerDetailPage, KitchenPage, BusinessPage,
                    business/BusinessSummaryPage, BusinessAnalyticsPage,
                    BusinessOrdersPage, CheckoutPage, SettlementsPage,
                    SettlementDetailPage, PartnersPage, MyEarningsPage
   utils/           formatPrice, getTableFromUrl, timeAgo, sound,
                    periodHelpers, csvExport, monthHelpers,
-                   calculatePaymentTotals
+                   calculatePaymentTotals, mapOrderItem
   config/          pricing.ts, rewards.ts
   App.tsx
   main.tsx
@@ -208,8 +211,61 @@ Items dentro de cada pedido (preparado para multi-producto desde día 1).
 | product_name | text | snapshot del nombre |
 | product_type | text | `burger` \| `drink` \| `side` |
 | quantity | integer | |
-| unit_price | numeric | snapshot del precio |
-| subtotal | numeric | |
+| unit_price | numeric | snapshot del precio base del producto |
+| subtotal | numeric | unit_price × quantity (sin extras) |
+| universal_extras | jsonb | snapshot `[{ extra_id, name, emoji, qty, unit_price }]` |
+| specific_extras | jsonb | snapshot `[{ extra_id, name, emoji, unit_price }]` |
+| removed_ingredients | jsonb | snapshot `[{ ingredient_id, name, emoji }]` (no afecta precio) |
+| item_note | text nullable | nota libre al nivel del ítem (Turno 7) |
+| extras_total | numeric | suma de extras × quantity, server-side |
+| item_total | numeric | (unit_price + extras_unit) × quantity, server-side |
+
+**Turno 7 — customización:** los extras y los ingredientes removidos se persisten como snapshot dentro de cada `order_item`. `create-order` valida cada `extra_id`/`ingredient_id` contra la base, valida que los específicos pertenezcan al producto correcto y que los counters respeten `max_quantity`, y recalcula `extras_total` + `item_total` server-side. El frontend nunca manda precios de extras.
+
+#### `universal_extras` (Turno 7)
+Extras que aplican a cualquier burger.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| id | text PK | slug, ej. `cheddar`, `doble-carne` |
+| name | text | |
+| emoji | text nullable | |
+| price | numeric(10,2) | en ARS |
+| selection_type | text | `counter` \| `toggle` |
+| max_quantity | int | tope (ej. cheddar = 3, toggles = 1) |
+| display_order | int | |
+| active | boolean | |
+
+Seed inicial: `cheddar` (counter, $3500, max 3), `doble-carne` (toggle, $5000), `bacon` (toggle, $3000), `huevo` (toggle, $2500).
+
+#### `product_specific_extras` (Turno 7)
+Extras que solo aparecen para una burger puntual.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| id | text PK | |
+| product_id | text FK → products | |
+| name | text | |
+| emoji | text nullable | |
+| price | numeric(10,2) | |
+| display_order | int | |
+| active | boolean | |
+
+Seed inicial: La Salvaje recibe `extra-picante` y `jalapenos-extra` ($2000 c/u). Si Juan quiere ampliar (ej. BBQ extra en Smoke House), se hace por SQL/Studio.
+
+#### `product_ingredients` (Turno 7)
+Lista de ingredientes por burger con flag `removable`. Carne y pan se marcan como NO removibles. Sin esta tabla poblada, no funciona la sección "Sin esto" del cliente.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| id | text PK | ej. `islanegra-classic-cebolla` |
+| product_id | text FK → products | |
+| name | text | |
+| emoji | text nullable | |
+| removable | boolean | core (carne/pan) = false |
+| display_order | int | |
+
+Seed inicial: ingredientes de las 6 burgers, derivados de `src/data/burgers.ts`.
 
 #### `profiles`
 Extiende `auth.users` con rol y vínculo opcional a `partners` (turno 4).
@@ -330,6 +386,8 @@ Scores del mini-juego Flappy Burger y registro de premios ganados. **Una sola ta
 - `monthly_settlements` — owner/partner: SELECT. Solo owner: INSERT/UPDATE (con trigger de inmutabilidad).
 - `partner_payouts` — owner/partner: SELECT. Solo owner: INSERT/UPDATE (con trigger de inmutabilidad — solo `paid`/`paid_at` mutables).
 - `payments` — owner/partner: SELECT. Anon/authenticated: INSERT para intentos `pending` y confirmación cash `approved`; SELECT de pagos vinculados a pedidos recientes. Edge Functions usan service role.
+- `universal_extras`, `product_specific_extras` — público: SELECT donde `active = true`. Solo service role escribe.
+- `product_ingredients` — público: SELECT. Solo service role escribe.
 - Realtime habilitado para `orders`, `order_items` y `payments` (REPLICA IDENTITY FULL).
 
 **Pre-prod:**
@@ -526,6 +584,72 @@ Estas funcionalidades NO están en el plan y no se deben implementar sin discusi
 
 > Formato: orden cronológico inverso (más reciente arriba). Cada entrada indica fecha, turno y resumen de cambios.
 
+### 2026-05-16 — Turno 7: customización de hamburguesas ✅
+
+**Estado:** completado en código. `tsc --noEmit` y `npm run build` limpios (932 KB JS / 32 KB CSS · 2473 módulos). Falta aplicar la migración en Supabase.
+
+**Implementado:**
+- Migración `supabase/migrations/20260514000002_customization.sql`:
+  - Nuevas tablas `universal_extras`, `product_specific_extras`, `product_ingredients` con RLS pública de solo lectura.
+  - Seeds: 4 extras universales (cheddar counter max 3, doble-carne, bacon, huevo toggles), 2 extras específicos para La Salvaje (picante, jalapeños), ingredientes para las 6 burgers (carne y pan marcados como NO removibles).
+  - Extensión de `order_items` con `universal_extras` / `specific_extras` / `removed_ingredients` (jsonb), `item_note`, `extras_total`, `item_total`.
+- Edge Function `create-order` refactor:
+  - Acepta `universalExtras`, `specificExtras`, `removedIngredients`, `note` por ítem (sin precios).
+  - Lee precios de extras desde la base, valida que cada extra esté activo, que los específicos pertenezcan al producto y que los counters respeten `max_quantity`.
+  - Valida que cada `ingredient_id` removido pertenezca al producto y sea removable; abortar si no.
+  - Calcula `extras_total` e `item_total` server-side; persiste snapshot con `name`/`emoji`/`unit_price` para que el KDS pueda renderizar sin lookups extra.
+  - Subtotal del pedido = suma de `item_total`. Descuento cash (10%) se aplica sobre ese subtotal.
+- Frontend:
+  - `extrasService.ts` lee extras + ingredientes de Supabase.
+  - `useItemCustomization` maneja contador, toggles, chips tachables, nota colapsable y total en vivo (precios leídos de la base, nunca hardcodeados).
+  - Componentes nuevos: `UniversalExtras` (counter prominente con `+` grande / toggles), `SpecificExtras` (solo si la burger tiene), `RemovableIngredients` (chips ≥44px con `line-through` al tachar), `ItemNote` (colapsable).
+  - `OrderSheet` se reorganiza con footer sticky que muestra el total en vivo desde paso 1, suma extras a la unidad y multiplica por cantidad. La nota del ítem reemplaza la nota global del pedido.
+  - `mapOrderItem` util compartido entre `ordersService`, `kitchenService`, `salonService`, `businessService` para evitar drift al mapear `order_items`.
+- KDS (`/cocina`):
+  - `KitchenOrderCard` muestra cada item con sus extras agregados ("+ Cheddar x2") en verde, ingredientes removidos como "SIN cebolla" en rojo destacado, y la nota del ítem en cursiva. No usa acordeón — todo a la vista.
+- Tracking del cliente (`OrderDetailAccordion`) ahora muestra `item_total` por ítem + extras agregados + sin-X + nota del ítem. `/salon` usa `totalAmount` del pedido que ya incluye extras (recalculado server-side).
+
+**Archivos nuevos:**
+- `supabase/migrations/20260514000002_customization.sql`
+- `src/types/customization.ts`
+- `src/services/extrasService.ts`
+- `src/hooks/useItemCustomization.ts`
+- `src/components/order/UniversalExtras.tsx`
+- `src/components/order/SpecificExtras.tsx`
+- `src/components/order/RemovableIngredients.tsx`
+- `src/components/order/ItemNote.tsx`
+- `src/utils/mapOrderItem.ts`
+
+**Archivos modificados:**
+- `supabase/functions/create-order/index.ts`
+- `src/components/order/OrderSheet.tsx`
+- `src/components/kitchen/KitchenOrderCard.tsx`
+- `src/components/tracking/OrderDetailAccordion.tsx`
+- `src/services/ordersService.ts` (drop `createOrder` legacy + usa `mapOrderItem`)
+- `src/services/kitchenService.ts`, `salonService.ts`, `businessService.ts` (mappers compartidos)
+- `src/types/order.ts` (`OrderItem` extendido con extras, removed, item_note, totals)
+- `CLAUDE.md`
+
+**Decisiones técnicas:**
+- Los snapshots de extras guardan también el `name`/`emoji`/`unit_price` para que el KDS y el dashboard puedan renderizar sin un join contra `universal_extras` / `product_specific_extras`. Si Juan renombra un extra en el futuro, los pedidos ya emitidos siguen mostrando el nombre de cuando se vendieron — mismo principio que `product_name` snapshot del Turno 6-fix.
+- `removed_ingredients` también guarda el `name`, por la misma razón (legibilidad + estabilidad histórica).
+- Counter/toggle como un único tipo `selection_type` permite agregar futuros extras sin tocar UI: la query devuelve el tipo y la UI elige render.
+- Si una burger no tiene `product_specific_extras` activos, la sección entera no se renderiza (sin título). Misma regla para `product_ingredients`.
+- `OrderInput`/`OrderItemInput` quedaron en `types/order.ts` por compatibilidad histórica pero ya nadie llama al `createOrder` cliente-side eliminado.
+
+**Pendiente decisión de negocio (Mauricio):**
+- Aplicar la migración `20260514000002_customization.sql` en Supabase dev/prod.
+- Ajustar precios de extras universales si los actuales ($3500 cheddar, $5000 doble-carne, $3000 bacon, $2500 huevo) no se alinean con la carta real.
+- Revisar y completar `product_specific_extras` para Smoke House (BBQ extra) y cualquier otra burger que justifique extras propios. Hoy solo La Salvaje los tiene.
+- Validar la lista de ingredientes removibles de cada burger en `product_ingredients` (¿la salsa de la casa es removible? ¿la rúcula?).
+- Panel de admin para editar extras/precios queda fuera de scope: por ahora se edita vía Supabase Studio o SQL.
+
+**Pendiente / observaciones:**
+- `OrderSheet` ya no tiene nota global del pedido; la nota viaja ahora a nivel de ítem. Como cada pedido es monoítem todavía, no se pierde nada. Cuando se habilite multi-producto, la UI de carrito tendrá que decidir si exponer nota global además de nota por ítem.
+- El hook `useItemCustomization` hace un fetch por burger al abrir el OrderSheet. Para volumen actual es OK; si se vuelve molesto, se cachea con un store global o se hace fetch al cargar el menú.
+
+---
+
 ### 2026-05-14 — Turno 6-fix: precios server-side ✅
 
 **Estado:** completado en código. Build y `tsc --noEmit` no ejecutados por restricción explícita del turno.
@@ -689,7 +813,7 @@ Estas funcionalidades NO están en el plan y no se deben implementar sin discusi
 **Archivos modificados relevantes:**
 - `package.json`, `src/vite-env.d.ts`, `src/App.tsx`, `src/components/order/OrderSheet.tsx`, `src/services/ordersService.ts`, `src/services/kitchenService.ts`, `src/pages/KitchenPage.tsx`, `src/components/kitchen/KitchenOrderCard.tsx`, `src/services/businessService.ts`, `src/components/business/OrdersTable.tsx`, `src/components/business/OrderRow.tsx`, `src/components/business/PaymentMethodChart.tsx`, `src/data/copy.ts`, `src/components/tracking/*`, `CLAUDE.md`.
 
-**TODOs Juan / pre-flight Turno 6:**
+**Pendiente decisión de negocio (Mauricio) / pre-flight Turno 6:**
 - Crear/validar cuenta empresa MercadoPago y cuenta bancaria de retiro.
 - Configurar webhook en MercadoPago Dashboard apuntando a `https://<project-ref>.supabase.co/functions/v1/mp-webhook` para eventos `payment`.
 - Cargar Supabase secrets: `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MP_ENVIRONMENT`, `SITE_URL`.
@@ -937,4 +1061,4 @@ Sugerencias técnicas: `mau.sawicki@gmail.com` (link en footer de la app).
 
 ---
 
-*Última actualización: 2026-05-14, Turno 6-fix precios server-side.*
+*Última actualización: 2026-05-16, Turno 7 customización de hamburguesas.*

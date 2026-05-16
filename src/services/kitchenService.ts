@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient';
 import type { Order, OrderStatus } from '@/types/order';
 import type { LegacyPaymentMethod, PaymentStatus } from '@/types/payment';
+import { mapOrderItemRow, type OrderItemRowLike } from '@/utils/mapOrderItem';
 
 const ACTIVE_STATUSES: OrderStatus[] = ['new', 'preparing', 'ready'];
 
@@ -20,18 +21,7 @@ interface OrderRow {
   note: string | null;
   status: OrderStatus;
   created_at: string;
-  order_items: OrderItemRow[];
-}
-
-interface OrderItemRow {
-  id: string;
-  order_id: string;
-  product_id: string;
-  product_name: string;
-  product_type: 'burger' | 'drink' | 'side';
-  quantity: number;
-  unit_price: number | string;
-  subtotal: number | string;
+  order_items: OrderItemRowLike[];
 }
 
 function mapOrder(row: OrderRow): Order {
@@ -51,16 +41,7 @@ function mapOrder(row: OrderRow): Order {
     note: row.note,
     status: row.status,
     createdAt: row.created_at,
-    items: (row.order_items ?? []).map((it) => ({
-      id: it.id,
-      orderId: it.order_id,
-      productId: it.product_id,
-      productName: it.product_name,
-      productType: it.product_type,
-      quantity: it.quantity,
-      unitPrice: Number(it.unit_price),
-      subtotal: Number(it.subtotal),
-    })),
+    items: (row.order_items ?? []).map(mapOrderItemRow),
   };
 }
 

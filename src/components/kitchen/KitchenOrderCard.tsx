@@ -94,20 +94,47 @@ export function KitchenOrderCard({
         <span className="text-white/45 tabular-nums">{timeAgo(order.createdAt, now)}</span>
       </div>
 
-      <ul className="space-y-1.5 border-t border-white/[0.08] pt-4">
-        {order.items.map((it) => (
-          <li
-            key={it.id}
-            className="flex items-baseline justify-between gap-3 text-base text-white"
-          >
-            <span className="flex items-baseline gap-3">
-              <span className="inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full bg-white/10 px-2 text-sm font-semibold tabular-nums text-white">
-                {it.quantity}
-              </span>
-              <span className="text-balance">{it.productName}</span>
-            </span>
-          </li>
-        ))}
+      <ul className="space-y-3 border-t border-white/[0.08] pt-4">
+        {order.items.map((it) => {
+          const hasUniversal = it.universalExtras.length > 0;
+          const hasSpecific = it.specificExtras.length > 0;
+          const hasRemoved = it.removedIngredients.length > 0;
+          return (
+            <li key={it.id} className="text-base text-white">
+              <div className="flex items-baseline gap-3">
+                <span className="inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full bg-white/10 px-2 text-sm font-semibold tabular-nums text-white">
+                  {it.quantity}
+                </span>
+                <span className="text-balance">{it.productName}</span>
+              </div>
+              {(hasUniversal || hasSpecific) && (
+                <ul className="ml-10 mt-1.5 space-y-0.5 text-sm text-emerald-200">
+                  {it.universalExtras.map((extra) => (
+                    <li key={`u-${extra.extra_id}`}>
+                      + {extra.name}
+                      {extra.qty > 1 ? ` x${extra.qty}` : ''}
+                    </li>
+                  ))}
+                  {it.specificExtras.map((extra) => (
+                    <li key={`s-${extra.extra_id}`}>+ {extra.name}</li>
+                  ))}
+                </ul>
+              )}
+              {hasRemoved && (
+                <ul className="ml-10 mt-1.5 space-y-0.5 text-sm font-semibold uppercase tracking-wide text-red-300">
+                  {it.removedIngredients.map((ing) => (
+                    <li key={`r-${ing.ingredient_id}`}>SIN {ing.name}</li>
+                  ))}
+                </ul>
+              )}
+              {it.itemNote && (
+                <p className="ml-10 mt-1.5 text-sm italic text-white/75">
+                  “{it.itemNote}”
+                </p>
+              )}
+            </li>
+          );
+        })}
       </ul>
 
       {order.note && (

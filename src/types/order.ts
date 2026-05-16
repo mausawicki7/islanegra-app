@@ -24,10 +24,37 @@ export interface OrderItemInput {
   unitPrice: number;
 }
 
+export interface OrderItemUniversalExtra {
+  extra_id: string;
+  name: string;
+  emoji: string | null;
+  qty: number;
+  unit_price: number;
+}
+
+export interface OrderItemSpecificExtra {
+  extra_id: string;
+  name: string;
+  emoji: string | null;
+  unit_price: number;
+}
+
+export interface OrderItemRemovedIngredient {
+  ingredient_id: string;
+  name: string;
+  emoji: string | null;
+}
+
 export interface OrderItem extends OrderItemInput {
   id: string;
   orderId: string;
   subtotal: number;
+  universalExtras: OrderItemUniversalExtra[];
+  specificExtras: OrderItemSpecificExtra[];
+  removedIngredients: OrderItemRemovedIngredient[];
+  itemNote: string | null;
+  extrasTotal: number;
+  itemTotal: number;
 }
 
 export interface OrderInput {

@@ -2,6 +2,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
 import type { SalonConnectionState, SalonOrder, SalonOrderStatus } from '@/types/salon';
 import type { LegacyPaymentMethod, PaymentStatus } from '@/types/payment';
+import { mapOrderItemRow, type OrderItemRowLike } from '@/utils/mapOrderItem';
 
 interface SalonOrderRow {
   id: string;
@@ -17,18 +18,7 @@ interface SalonOrderRow {
   ready_at: string | null;
   claimed_by: string | null;
   claimed_at: string | null;
-  order_items?: SalonOrderItemRow[];
-}
-
-interface SalonOrderItemRow {
-  id: string;
-  order_id: string;
-  product_id: string;
-  product_name: string;
-  product_type: 'burger' | 'drink' | 'side';
-  quantity: number;
-  unit_price: number | string;
-  subtotal: number | string;
+  order_items?: OrderItemRowLike[];
 }
 
 interface SalonOrderRealtimeRow {
@@ -57,16 +47,7 @@ function mapSalonOrder(row: SalonOrderRow): SalonOrder {
     readyAt: row.ready_at,
     claimedBy: row.claimed_by,
     claimedAt: row.claimed_at,
-    items: (row.order_items ?? []).map((it) => ({
-      id: it.id,
-      orderId: it.order_id,
-      productId: it.product_id,
-      productName: it.product_name,
-      productType: it.product_type,
-      quantity: it.quantity,
-      unitPrice: Number(it.unit_price),
-      subtotal: Number(it.subtotal),
-    })),
+    items: (row.order_items ?? []).map(mapOrderItemRow),
   };
 }
 

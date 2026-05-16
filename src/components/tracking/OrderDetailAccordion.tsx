@@ -27,15 +27,39 @@ export function OrderDetailAccordion({ order }: OrderDetailAccordionProps) {
       </button>
       {open && (
         <div className="border-t border-white/[0.08] px-4 py-4">
-          <ul className="space-y-3">
+          <ul className="space-y-4">
             {order.items.map((item) => (
-              <li key={item.id} className="flex justify-between gap-4 text-sm">
-                <span className="min-w-0 text-white/70">
-                  {item.quantity} x {item.productName}
-                </span>
-                <span className="shrink-0 tabular-nums text-white">
-                  {formatPrice(item.subtotal)}
-                </span>
+              <li key={item.id} className="text-sm">
+                <div className="flex justify-between gap-4">
+                  <span className="min-w-0 text-white/70">
+                    {item.quantity} x {item.productName}
+                  </span>
+                  <span className="shrink-0 tabular-nums text-white">
+                    {formatPrice(item.itemTotal)}
+                  </span>
+                </div>
+                {(item.universalExtras.length > 0 || item.specificExtras.length > 0) && (
+                  <ul className="mt-1 space-y-0.5 pl-4 text-xs text-emerald-200/85">
+                    {item.universalExtras.map((e) => (
+                      <li key={`u-${e.extra_id}`}>
+                        + {e.name}{e.qty > 1 ? ` x${e.qty}` : ''}
+                      </li>
+                    ))}
+                    {item.specificExtras.map((e) => (
+                      <li key={`s-${e.extra_id}`}>+ {e.name}</li>
+                    ))}
+                  </ul>
+                )}
+                {item.removedIngredients.length > 0 && (
+                  <ul className="mt-1 space-y-0.5 pl-4 text-xs text-red-300/85">
+                    {item.removedIngredients.map((ing) => (
+                      <li key={`r-${ing.ingredient_id}`}>Sin {ing.name}</li>
+                    ))}
+                  </ul>
+                )}
+                {item.itemNote && (
+                  <p className="mt-1 pl-4 text-xs italic text-white/60">“{item.itemNote}”</p>
+                )}
               </li>
             ))}
           </ul>
